@@ -7,7 +7,12 @@ authors = [
     { name = "Cao Tri DO", email = "caotri.do88@gmail.com" }
 ]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "streamlit>=1.40.0",
+    "groq>=0.15.0",
+    "gitpython>=3.1.0",
+    "requests>=2.31.0",
+]
 
 [project.scripts]
 dev-tooling-chat = "dev_tooling_chat:main"
