@@ -1,0 +1,17 @@
+[project]
+name = "dev-tooling-chat"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Cao Tri DO", email = "caotri.do88@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+dev-tooling-chat = "dev_tooling_chat:main"
+
+[build-system]
+requires = ["uv_build>=0.9.17,<0.10.0"]
+build-backend = "uv_build"
