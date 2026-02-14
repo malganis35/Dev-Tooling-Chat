@@ -101,9 +101,12 @@ def git_diff(repo_path: str, source_branch: str, target_branch: str) -> str:
 
 def load_prompt(filename: str) -> str:
     """Load a prompt file from the ``prompts/`` directory."""
-    prompts_dir = os.path.join(os.path.dirname(__file__), "prompts")
-    with open(os.path.join(prompts_dir, filename), "r", encoding="utf-8") as f:
-        return f.read()
+    from pathlib import Path
+
+    # resolve() ensures an absolute path even on Streamlit Cloud
+    project_root = Path(__file__).resolve().parent.parent.parent
+    prompts_dir = project_root / "prompts"
+    return (prompts_dir / filename).read_text(encoding="utf-8")
 
 
 def render_response_actions(response_text: str, key_prefix: str) -> None:
