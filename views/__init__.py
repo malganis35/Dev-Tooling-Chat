@@ -1,1 +1,1 @@
-# Pages package for Dev Tooling Assistant.
+"""Pages package for Dev Tooling Assistant."""

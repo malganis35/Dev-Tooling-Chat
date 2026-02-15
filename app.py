@@ -5,8 +5,9 @@ A visual interface for AI-powered code analysis tools using the Groq API.
 
 import streamlit as st
 from loguru import logger
-from dev_tooling_chat.utils import fetch_groq_models
+
 from dev_tooling_chat.styles import inject_global_css
+from dev_tooling_chat.utils import fetch_groq_models
 
 logger.info("Starting Dev Tooling Assistant application")
 

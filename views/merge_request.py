@@ -5,8 +5,10 @@ MR description from a git diff.
 """
 
 import tempfile
+
 import streamlit as st
 from loguru import logger
+
 from dev_tooling_chat.utils import (
     call_groq_llm,
     clone_repo,
@@ -19,6 +21,7 @@ from dev_tooling_chat.utils import (
 
 
 def render() -> None:
+    """Render the Merge Request Description page."""
     logger.info("Rendering Merge Request Description page")
 
     # Styled page header
@@ -80,8 +83,7 @@ def render() -> None:
             with st.expander("📄 Preview uploaded diff", expanded=False):
                 st.code(diff_content[:3000] + ("..." if len(diff_content) > 3000 else ""), language="diff")
 
-        if diff_content:
-            if st.button("🚀 Generate MR Description", key="mr_run_file_btn"):
+        if diff_content and st.button("🚀 Generate MR Description", key="mr_run_file_btn"):
                 model = st.session_state.get("groq_model", "openai/gpt-oss-120b")
                 logger.info("Generating MR description from uploaded file with model='{}'", model)
                 with st.status("Generating MR description…", expanded=True) as status:
