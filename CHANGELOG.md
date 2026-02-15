@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Conventional Commits](https://www.conventionalcommits.org/) with [Commitizen](https://github.com/commitizen/cz-cli).
 
+## v0.8.0 (2026-02-15)
+
+### Feat
+
+- add dockerfile
+- trigger ci on push on main branch
+
+### Fix
+
+- **utils**: issue with callable
+- add ruff and pytest to dev dep
+
+### Refactor
+
+- precommit correction
+- precommit correction
+- ruff format correction
+- ruff format correction
+
 ## v0.7.0 (2026-02-15)
 
 ### Feat

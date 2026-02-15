@@ -1,6 +1,6 @@
 [project]
 name = "dev-tooling-chat"
-version = "0.7.0"
+version = "0.8.0"
 description = "Analyze, audit and document your code in seconds — powered by AI"
 readme = "README.md"
 authors = [
