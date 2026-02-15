@@ -51,6 +51,10 @@ check: lint format-check ## Run all code quality checks (lint + format)
 bump: ## Bump version using commitizen (conventional commits)
 	uv run --extra dev cz bump
 
+.PHONY: release
+release: ## Push commits and tags to remote
+	git push && git push --tags
+
 .PHONY: build
 build: ## Build the distribution package
 	uv build
