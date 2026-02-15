@@ -20,10 +20,6 @@ dependencies = [
     "loguru>=0.7.0",
 ]
 
-dynamic = ['version']
-
-[tool.setuptools.dynamic]
-version = { file = "version.txt" }
 
 [project.scripts]
 dev-tooling-chat = "dev_tooling_chat:main"
@@ -68,10 +64,11 @@ docstring-code-format = true
 
 [tool.commitizen]
 name = "cz_conventional_commits"
-version = "0.4.0"
+version = "0.5.0"
 tag_format = "v$version"
 version_files = [
-  "version.txt"
+  "version.txt",
+  "pyproject.toml:version"
 ]
 bump_message = "chore(release): bump version $current_version → $new_version"
 update_changelog_on_bump = true
