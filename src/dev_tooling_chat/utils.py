@@ -69,10 +69,40 @@ def clone_repo(github_url: str, dest_dir: str) -> str:
 def clone_and_ingest(github_url: str) -> str:
     """Clone a public GitHub repo, run ``gitingest`` on it and return the
     content of the generated ``digest.txt`` file."""
+    # Patterns to exclude from ingestion – these files are heavy and have no
+    # value for a code audit, but would blow up the token count and trigger
+    # Groq rate-limit errors (HTTP 413).
+    exclude_patterns = ",".join([
+        "uv.lock",
+        "poetry.lock",
+        "package-lock.json",
+        "yarn.lock",
+        "*.docx",
+        "*.pdf",
+        "*.xlsx",
+        "*.pptx",
+        "*.bin",
+        "*.exe",
+        "*.zip",
+        "*.tar.gz",
+        "*.png",
+        "*.jpg",
+        "*.jpeg",
+        "*.gif",
+        "*.svg",
+        "*.woff",
+        "*.woff2",
+        "*.ttf",
+        "*.eot",
+    ])
+
     with tempfile.TemporaryDirectory() as tmp:
         local_path = clone_repo(github_url, tmp)
         subprocess.run(
-            ["uv", "run", "--with", "gitingest", "gitingest", "."],
+            [
+                "uv", "run", "--with", "gitingest", "gitingest", ".",
+                "--exclude-pattern", exclude_patterns,
+            ],
             cwd=local_path,
             check=True,
             capture_output=True,
