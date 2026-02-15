@@ -15,11 +15,14 @@ st.set_page_config(
 
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.image(
-        "https://img.icons8.com/fluency/96/code.png",
-        width=64,
-    )
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.image(
+            "https://i.postimg.cc/T1gjvpMg/logo-astrodata-v2.png",
+            width=200,
+        )
     st.title("Dev Tooling Chat")
+    st.markdown("Your AI-powered code analysis assistant")
     st.markdown("---")
 
     # API key input
