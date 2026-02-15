@@ -1,6 +1,6 @@
 [project]
 name = "dev-tooling-chat"
-version = "0.6.0"
+version = "0.7.0"
 description = "Analyze, audit and document your code in seconds — powered by AI"
 readme = "README.md"
 authors = [
@@ -64,11 +64,10 @@ docstring-code-format = true
 
 [tool.commitizen]
 name = "cz_conventional_commits"
-version = "0.5.0"
+version_provider = "pep621"
 tag_format = "v$version"
 version_files = [
-  "version.txt",
-  "pyproject.toml:version"
+  "version.txt"
 ]
 bump_message = "chore(release): bump version $current_version → $new_version"
 update_changelog_on_bump = true
