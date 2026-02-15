@@ -7,6 +7,7 @@ MR description from a git diff.
 import os
 import tempfile
 import streamlit as st
+from loguru import logger
 from dev_tooling_chat.utils import (
     call_groq_llm,
     clone_repo,
@@ -18,6 +19,7 @@ from dev_tooling_chat.utils import (
 
 
 def render() -> None:
+    logger.info("Rendering Merge Request Description page")
     st.title("🔀 Merge Request Description")
     st.markdown(
         "Auto-generate a **complete, structured Merge Request description** "
@@ -28,6 +30,7 @@ def render() -> None:
     # Check API key
     api_key = st.session_state.get("groq_api_key")
     if not api_key:
+        logger.warning("No API key found in session state")
         st.warning("⚠️ Please enter your Groq API key in the sidebar first.")
         return
 
@@ -51,12 +54,14 @@ def render() -> None:
         )
         if uploaded_file is not None:
             diff_content = uploaded_file.read().decode("utf-8")
+            logger.info("Diff file uploaded: '{}' ({} chars)", uploaded_file.name, len(diff_content))
             with st.expander("📄 Preview uploaded diff", expanded=False):
                 st.code(diff_content[:3000] + ("..." if len(diff_content) > 3000 else ""), language="diff")
 
         if diff_content:
             if st.button("🚀 Generate MR Description", key="mr_run_file_btn"):
                 model = st.session_state.get("groq_model", "openai/gpt-oss-120b")
+                logger.info("Generating MR description from uploaded file with model='{}'", model)
                 with st.spinner("🤖 Generating MR description with Groq LLM…"):
                     response = call_groq_llm(api_key, model, prompt, diff_content)
                     st.session_state["mr_response"] = response
@@ -70,6 +75,7 @@ def render() -> None:
 
         # Step 1 — Clone and list branches
         if github_url and st.button("📥 Fetch branches", key="mr_fetch_btn"):
+            logger.info("Fetching branches for URL: {}", github_url)
             with st.spinner("Cloning repository and fetching branches…"):
                 try:
                     tmp_dir = tempfile.mkdtemp()
@@ -77,8 +83,10 @@ def render() -> None:
                     branches = get_branches(local_path)
                     st.session_state["mr_repo_path"] = local_path
                     st.session_state["mr_branches"] = branches
+                    logger.success("Found {} branches", len(branches))
                     st.success(f"Found {len(branches)} branches ✅")
                 except Exception as e:
+                    logger.error("Failed to fetch branches for '{}': {}", github_url, e)
                     st.error(f"❌ Error: {e}")
                     return
 
@@ -102,10 +110,12 @@ def render() -> None:
             # Step 3 — Generate diff and analyze
             if st.button("🚀 Generate MR Description", key="mr_run_github_btn"):
                 repo_path = st.session_state["mr_repo_path"]
+                logger.info("Generating MR description: {} → {}", source_branch, target_branch)
                 with st.spinner("Computing diff and generating MR description…"):
                     try:
                         diff_text = git_diff(repo_path, source_branch, target_branch)
                         if not diff_text.strip():
+                            logger.warning("No diff found between '{}' and '{}'", source_branch, target_branch)
                             st.warning("⚠️ No differences found between the selected branches.")
                             return
 
@@ -115,6 +125,7 @@ def render() -> None:
                         response = call_groq_llm(api_key, st.session_state.get("groq_model", "openai/gpt-oss-120b"), prompt, diff_text)
                         st.session_state["mr_response"] = response
                     except Exception as e:
+                        logger.error("MR description generation failed: {}", e)
                         st.error(f"❌ Error: {e}")
                         return
 

@@ -12,6 +12,7 @@ dependencies = [
     "groq>=0.15.0",
     "gitpython>=3.1.0",
     "requests>=2.31.0",
+    "loguru>=0.7.0",
 ]
 
 [project.scripts]

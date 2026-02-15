@@ -4,7 +4,10 @@ A visual interface for AI-powered code analysis tools using the Groq API.
 """
 
 import streamlit as st
+from loguru import logger
 from dev_tooling_chat.utils import fetch_groq_models
+
+logger.info("Starting Dev Tooling Chat application")
 
 st.set_page_config(
     page_title="Dev Tooling Chat",
@@ -34,6 +37,7 @@ with st.sidebar:
     )
     if api_key:
         st.session_state["groq_api_key"] = api_key
+        logger.info("Groq API key provided by user")
         st.success("API key saved ✅")
 
     # Model selector (only visible once the API key is provided)
@@ -48,7 +52,9 @@ with st.sidebar:
                 help="Choose which Groq model to use for analysis.",
             )
             st.session_state["groq_model"] = selected_model
+            logger.info("Model selected: {}", selected_model)
         except Exception as e:
+            logger.error("Failed to fetch models: {}", e)
             st.error(f"Could not fetch models: {e}")
 
     st.markdown("---")
@@ -67,6 +73,8 @@ with st.sidebar:
     )
 
 # ── Page routing ─────────────────────────────────────────────────────────────
+logger.info("Navigating to page: {}", page)
+
 if page == "🏠 Home":
     st.title("🛠️ Dev Tooling Chat")
     st.markdown(

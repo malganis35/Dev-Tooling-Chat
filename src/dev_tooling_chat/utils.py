@@ -7,6 +7,7 @@ import requests
 import streamlit as st
 from groq import Groq
 from git import Repo
+from loguru import logger
 
 
 # ---------------------------------------------------------------------------
@@ -24,6 +25,7 @@ def _is_text_generation_model(model_id: str) -> bool:
 
 def fetch_groq_models(api_key: str) -> list[str]:
     """Fetch the list of available text-generation model IDs from the Groq API."""
+    logger.info("Fetching available Groq models…")
     url = "https://api.groq.com/openai/v1/models"
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -32,26 +34,36 @@ def fetch_groq_models(api_key: str) -> list[str]:
     resp = requests.get(url, headers=headers, timeout=10)
     resp.raise_for_status()
     data = resp.json()
-    return sorted([
-        m["id"] for m in data.get("data", [])
-        if _is_text_generation_model(m["id"])
-    ])
+    all_models = [m["id"] for m in data.get("data", [])]
+    text_models = sorted([m for m in all_models if _is_text_generation_model(m)])
+    logger.info("Fetched {} models total, {} text-generation models retained", len(all_models), len(text_models))
+    logger.debug("Text-generation models: {}", text_models)
+    return text_models
 
 
 def call_groq_llm(api_key: str, model: str, system_prompt: str, user_content: str) -> str:
     """Send *system_prompt* + *user_content* to the Groq chat API and return
     the assistant's reply as a string."""
+    logger.info("Calling Groq LLM with model={}", model)
+    logger.debug("System prompt length: {} chars | User content length: {} chars",
+                 len(system_prompt), len(user_content))
     client = Groq(api_key=api_key)
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_content},
-        ],
-        temperature=0.3,
-        max_tokens=8192,
-    )
-    return response.choices[0].message.content
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content},
+            ],
+            temperature=0.3,
+            max_tokens=8192,
+        )
+        reply = response.choices[0].message.content
+        logger.success("Groq LLM response received ({} chars)", len(reply))
+        return reply
+    except Exception as e:
+        logger.error("Groq LLM call failed: {}", e)
+        raise
 
 
 # ---------------------------------------------------------------------------
@@ -62,7 +74,13 @@ def clone_repo(github_url: str, dest_dir: str) -> str:
     """Clone a public GitHub repo into *dest_dir* and return the local path."""
     repo_name = github_url.rstrip("/").split("/")[-1].replace(".git", "")
     local_path = os.path.join(dest_dir, repo_name)
-    Repo.clone_from(github_url, local_path)
+    logger.info("Cloning repo '{}' into '{}'…", github_url, local_path)
+    try:
+        Repo.clone_from(github_url, local_path)
+        logger.success("Repository cloned successfully to '{}'", local_path)
+    except Exception as e:
+        logger.error("Failed to clone repository '{}': {}", github_url, e)
+        raise
     return local_path
 
 
@@ -96,9 +114,11 @@ def clone_and_ingest(github_url: str) -> str:
         "*.eot",
     ])
 
+    logger.info("Starting clone & ingest for '{}'", github_url)
     with tempfile.TemporaryDirectory() as tmp:
         local_path = clone_repo(github_url, tmp)
-        subprocess.run(
+        logger.info("Running gitingest on '{}' (excluding: {})…", local_path, exclude_patterns)
+        result = subprocess.run(
             [
                 "uv", "run", "--with", "gitingest", "gitingest", ".",
                 "--exclude-pattern", exclude_patterns,
@@ -108,21 +128,34 @@ def clone_and_ingest(github_url: str) -> str:
             capture_output=True,
             text=True,
         )
+        logger.debug("gitingest stdout: {}", result.stdout[:500] if result.stdout else "(empty)")
+        if result.stderr:
+            logger.debug("gitingest stderr: {}", result.stderr[:500])
+
         digest_path = os.path.join(local_path, "digest.txt")
+        logger.info("Reading digest file at '{}'", digest_path)
         with open(digest_path, "r", encoding="utf-8") as f:
-            return f.read()
+            content = f.read()
+        logger.success("Digest loaded: {} chars", len(content))
+        return content
 
 
 def get_branches(repo_path: str) -> list[str]:
     """Return a list of remote branch names for the repo at *repo_path*."""
+    logger.info("Fetching remote branches for '{}'…", repo_path)
     repo = Repo(repo_path)
-    return [ref.remote_head for ref in repo.remotes.origin.refs]
+    branches = [ref.remote_head for ref in repo.remotes.origin.refs]
+    logger.info("Found {} branches: {}", len(branches), branches)
+    return branches
 
 
 def git_diff(repo_path: str, source_branch: str, target_branch: str) -> str:
     """Return the diff between *source_branch* and *target_branch*."""
+    logger.info("Computing diff: origin/{} → origin/{}", target_branch, source_branch)
     repo = Repo(repo_path)
-    return repo.git.diff(f"origin/{target_branch}", f"origin/{source_branch}")
+    diff = repo.git.diff(f"origin/{target_branch}", f"origin/{source_branch}")
+    logger.info("Diff computed: {} chars", len(diff))
+    return diff
 
 
 # ---------------------------------------------------------------------------
@@ -133,16 +166,22 @@ def load_prompt(filename: str) -> str:
     """Load a prompt file from the ``prompts/`` directory."""
     from pathlib import Path
 
+    logger.info("Loading prompt file '{}'…", filename)
     # resolve() ensures an absolute path even on Streamlit Cloud
     project_root = Path(__file__).resolve().parent.parent.parent
     prompts_dir = project_root / "prompts"
-    return (prompts_dir / filename).read_text(encoding="utf-8")
+    prompt_path = prompts_dir / filename
+    content = prompt_path.read_text(encoding="utf-8")
+    logger.success("Prompt '{}' loaded ({} chars)", filename, len(content))
+    return content
 
 
 def render_response_actions(response_text: str, key_prefix: str) -> None:
     """Render a copy-to-clipboard button and a download button for *response_text*."""
     import html as html_mod
     import streamlit.components.v1 as components
+
+    logger.debug("Rendering response actions for key_prefix='{}'", key_prefix)
 
     escaped = html_mod.escape(response_text).replace("`", "\\`").replace("${", "\\${")
 
