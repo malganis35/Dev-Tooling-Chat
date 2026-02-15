@@ -22,6 +22,9 @@ dependencies = [
 
 dynamic = ['version']
 
+[tool.setuptools.dynamic]
+version = { file = "version.txt" }
+
 [project.scripts]
 dev-tooling-chat = "dev_tooling_chat:main"
 
