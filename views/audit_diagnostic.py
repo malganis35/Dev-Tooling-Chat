@@ -126,10 +126,17 @@ def render() -> None:
 
     if run or (code_content and "audit_response" not in st.session_state and input_method != "📄 Upload a .txt file"):
         logger.info("Running audit analysis with model='{}'", model)
-        input_tokens = estimate_tokens(code_content)
+        # Prepend the repo URL so the LLM can fill it into the audit template
+        repo_url = st.session_state.get("audit_last_url", "N/A")
+        llm_content = f"GitHub Repository URL: {repo_url}\n\n{code_content}"
+        input_tokens = estimate_tokens(llm_content)
         with st.status("Running AI audit…", expanded=True) as status:
             st.write(f"🤖 Sending to **{model}** (~{input_tokens:,} tokens)…")
-            result = call_groq_llm(api_key, model, prompt.format(model_name=model), code_content)
+            result = call_groq_llm(
+                api_key, model,
+                prompt.format(model_name=model, repo_url=repo_url),
+                llm_content,
+            )
             st.session_state["audit_response"] = result["content"]
             usage = result["usage"]
             st.write(
