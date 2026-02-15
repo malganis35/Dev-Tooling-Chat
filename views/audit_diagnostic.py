@@ -75,13 +75,21 @@ def render() -> None:
         with btn_col:
             clone_clicked = st.button("🚀 Clone & Analyze", key="audit_clone_btn", use_container_width=True)
 
+        # Clear cached results when the URL changes
+        if github_url and github_url != st.session_state.get("audit_last_url"):
+            for key in ("audit_code_content", "audit_response"):
+                st.session_state.pop(key, None)
+
         if github_url and clone_clicked:
             logger.info("User requested clone & ingest for URL: {}", github_url)
+            # Clear any previous response before re-analyzing
+            st.session_state.pop("audit_response", None)
             with st.status("Cloning and analyzing repository…", expanded=True) as status:
                 try:
                     st.write("📥 Cloning repository…")
                     code_content = clone_and_ingest(github_url)
                     st.session_state["audit_code_content"] = code_content
+                    st.session_state["audit_last_url"] = github_url
                     logger.success("Repository ingested successfully ({} chars)", len(code_content))
                     st.write("✅ Repository ingested successfully!")
                     status.update(label="Repository ready ✅", state="complete", expanded=False)

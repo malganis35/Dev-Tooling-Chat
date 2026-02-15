@@ -94,9 +94,16 @@ def render() -> None:
         with btn_col:
             fetch_clicked = st.button("📥 Fetch branches", key="mr_fetch_btn", use_container_width=True)
 
+        # Clear cached results when the URL changes
+        if github_url and github_url != st.session_state.get("mr_last_url"):
+            for key in ("mr_repo_path", "mr_branches", "mr_response"):
+                st.session_state.pop(key, None)
+
         # Step 1 — Clone and list branches
         if github_url and fetch_clicked:
             logger.info("Fetching branches for URL: {}", github_url)
+            # Clear any previous response before re-fetching
+            st.session_state.pop("mr_response", None)
             with st.status("Fetching branches…", expanded=True) as status:
                 try:
                     st.write("📥 Cloning repository…")
@@ -106,6 +113,7 @@ def render() -> None:
                     branches = get_branches(local_path)
                     st.session_state["mr_repo_path"] = local_path
                     st.session_state["mr_branches"] = branches
+                    st.session_state["mr_last_url"] = github_url
                     logger.success("Found {} branches", len(branches))
                     st.write(f"✅ Found {len(branches)} branches")
                     status.update(label=f"{len(branches)} branches found ✅", state="complete", expanded=False)
