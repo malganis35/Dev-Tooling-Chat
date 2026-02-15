@@ -5,13 +5,13 @@ import re
 import subprocess
 import tempfile
 import time
+from collections.abc import Callable
 
 import requests
 import streamlit as st
 from git import Repo
 from groq import Groq
 from loguru import logger
-from collections.abc import Callable
 
 # ---------------------------------------------------------------------------
 # LLM
