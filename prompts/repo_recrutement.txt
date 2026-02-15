@@ -201,9 +201,9 @@ You MUST use the EXACT following template for your response. Pay special attenti
 ```markdown
 # GitHub Repository Audit
 
-**Project:** [Project Name]  
-**Repository:** {repo_url}  
-**Date:** [Audit Date]  
+**Project:** [Project Name]
+**Repository:** {repo_url}
+**Date:** [Audit Date]
 **Auditor:** {model_name}
 
 ## Overall Score: ___/10
@@ -266,12 +266,12 @@ You MUST use the EXACT following template for your response. Pay special attenti
 - Recommendations:
 
 ### Key Strengths
-- 
+-
 
 ### Areas for Improvement (Priority)
-- 
+-
 
 ### Global Recommendations
-- 
+-
 
 ```
