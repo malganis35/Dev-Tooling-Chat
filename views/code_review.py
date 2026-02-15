@@ -6,7 +6,7 @@ Python code quality audit with weighted scoring.
 
 import streamlit as st
 from loguru import logger
-from dev_tooling_chat.utils import call_groq_llm, clone_and_ingest, estimate_tokens, load_prompt, render_response_actions
+from dev_tooling_chat.utils import analyze_code_content, clone_and_ingest, estimate_tokens, load_prompt, render_response_actions
 
 
 def render() -> None:
@@ -128,10 +128,23 @@ def render() -> None:
         code_content and "code_audit_response" not in st.session_state and input_method != "📄 Upload a .txt file"
     ):
         logger.info("Running code review with model='{}'", model)
+        # Prepend the repo URL so the LLM can fill it into the audit template
+        repo_url = st.session_state.get("code_audit_last_url", "N/A")
+        
         input_tokens = estimate_tokens(code_content)
         with st.status("Running AI code review…", expanded=True) as status:
             st.write(f"🤖 Sending to **{model}** (~{input_tokens:,} tokens)…")
-            result = call_groq_llm(api_key, model, prompt, code_content)
+            
+            # Use the smart analysis function
+            result = analyze_code_content(
+                    api_key=api_key, 
+                    model=model,
+                    prompt_template=prompt,
+                    code_content=code_content,
+                    repo_url=repo_url,
+                    status_callback=st.write
+                )
+            
             st.session_state["code_audit_response"] = result["content"]
             usage = result["usage"]
             st.write(

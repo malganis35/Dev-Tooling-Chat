@@ -6,7 +6,7 @@ repository against a professional recruitment audit grid.
 
 import streamlit as st
 from loguru import logger
-from dev_tooling_chat.utils import call_groq_llm, clone_and_ingest, estimate_tokens, load_prompt, render_response_actions
+from dev_tooling_chat.utils import analyze_code_content, clone_and_ingest, estimate_tokens, load_prompt, render_response_actions
 
 
 def render() -> None:
@@ -19,7 +19,7 @@ def render() -> None:
             <div class="icon-badge">🔍</div>
             <div class="header-text">
                 <h1>Audit &amp; Diagnostic</h1>
-                <p>Evaluate a repository against a 10-point professional audit grid.</p>
+                <p>Evaluate a repository against a 10-point professional recruitment audit grid.</p>
             </div>
         </div>
         """,
@@ -128,15 +128,24 @@ def render() -> None:
         logger.info("Running audit analysis with model='{}'", model)
         # Prepend the repo URL so the LLM can fill it into the audit template
         repo_url = st.session_state.get("audit_last_url", "N/A")
-        llm_content = f"GitHub Repository URL: {repo_url}\n\n{code_content}"
-        input_tokens = estimate_tokens(llm_content)
+        
+        # We don't construct llm_content here anymore because analyze_code_content does it 
+        # (or handles chunks). We just estimate tokens for the UI message.
+        input_tokens = estimate_tokens(code_content)
+        
         with st.status("Running AI audit…", expanded=True) as status:
             st.write(f"🤖 Sending to **{model}** (~{input_tokens:,} tokens)…")
-            result = call_groq_llm(
-                api_key, model,
-                prompt.format(model_name=model, repo_url=repo_url),
-                llm_content,
+            
+            # Use the smart analysis function
+            result = analyze_code_content(
+                api_key=api_key, 
+                model=model,
+                prompt_template=prompt,
+                code_content=code_content,
+                repo_url=repo_url,
+                status_callback=st.write
             )
+            
             st.session_state["audit_response"] = result["content"]
             usage = result["usage"]
             st.write(

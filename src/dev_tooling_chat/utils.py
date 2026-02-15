@@ -242,6 +242,255 @@ def git_diff(repo_path: str, source_branch: str, target_branch: str) -> str:
     return diff
 
 
+
+def parse_gitingest_content(content: str) -> list[dict]:
+    """Parse *content* (output from gitingest) into a list of file dicts."""
+    # Robust regex for the separator (at least 20 equals signs)
+    separator_pattern = r"^={20,}$"
+    
+    # Split the content
+    raw_chunks = re.split(separator_pattern, content, flags=re.MULTILINE)
+    
+    files = []
+    
+    for chunk in raw_chunks:
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+            
+        lines = chunk.splitlines()
+        while lines and not lines[0].strip():
+            lines.pop(0)
+            
+        if not lines:
+            continue
+            
+        if lines[0].startswith("File: "):
+            path = lines[0].replace("File: ", "").strip()
+            file_content = "\n".join(lines[1:]).strip()
+            files.append({
+                "path": path,
+                "content": file_content,
+                "tokens": estimate_tokens(file_content)
+            })
+        elif lines[0].startswith("Directory: "):
+             continue
+        else:
+             pass
+             
+    # FALLBACK: If we found no files, it effectively means the parse failed 
+    # (or the repo is empty, but then content would be empty).
+    # We treat the whole content as one "file" to ensure we don't return 0 chunks.
+    if not files and content.strip():
+        logger.warning("parse_gitingest_content found 0 files. Falling back to single-file mode.")
+        logger.debug("Content preview: {}", content[:200])
+        files.append({
+            "path": "entire_repo_digest.txt",
+            "content": content,
+            "tokens": estimate_tokens(content)
+        })
+
+    logger.info("Parsed {} files from digest.", len(files))
+    return files
+
+
+def create_chunks(files: list[dict], max_tokens: int = 6000) -> list[str]:
+    """Group *files* into text chunks, each roughly under *max_tokens*.
+    If a single file is larger than *max_tokens*, it is split into multiple chunks.
+    """
+    chunks = []
+    current_chunk_files = []
+    current_chunk_tokens = 0
+    
+    def _flush_current_chunk():
+        nonlocal current_chunk_files, current_chunk_tokens
+        if current_chunk_files:
+            text = "\n\n".join(current_chunk_files)
+            chunks.append(text)
+            current_chunk_files = []
+            current_chunk_tokens = 0
+
+    for f in files:
+        f_tokens = f["tokens"]
+        
+        # CASE 1: File fits in the current chunk?
+        if current_chunk_tokens + f_tokens <= max_tokens:
+            entry = f"File: {f['path']}\n====================\n{f['content']}"
+            current_chunk_files.append(entry)
+            current_chunk_tokens += f_tokens
+            continue
+            
+        # CASE 2: File is huge (larger than max_tokens) or just won't fit current chunk?
+        
+        # First, if we have a current chunk, flush it to start fresh
+        if current_chunk_files:
+            _flush_current_chunk()
+            
+        # Now, is the file ITSELF larger than max_tokens?
+        if f_tokens > max_tokens:
+            # We need to split this file
+            logger.info("File '{}' is too large ({} tokens). Splitting...", f['path'], f_tokens)
+            lines = f['content'].splitlines()
+            
+            # Accumulate lines for this file parts
+            part_lines = []
+            part_tokens = 0
+            part_idx = 1
+            
+            # Header tokens approximation
+            header = f"File: {f['path']} (Part {part_idx})\n====================\n"
+            header_tokens = estimate_tokens(header)
+            
+            for line in lines:
+                line_tokens = estimate_tokens(line) + 1 # +1 for newline
+                
+                if part_tokens + line_tokens + header_tokens > max_tokens:
+                    # Flush this part
+                    full_text = header + "\n".join(part_lines)
+                    chunks.append(full_text)
+                    
+                    # Reset for next part
+                    part_idx += 1
+                    part_lines = []
+                    part_tokens = 0
+                    header = f"File: {f['path']} (Part {part_idx})\n====================\n"
+                    header_tokens = estimate_tokens(header)
+
+                part_lines.append(line)
+                part_tokens += line_tokens
+                
+            # Flush existing part
+            if part_lines:
+                full_text = header + "\n".join(part_lines)
+                chunks.append(full_text)
+                
+        else:
+            # File fits in a fresh chunk (we flushed above)
+            entry = f"File: {f['path']}\n====================\n{f['content']}"
+            current_chunk_files.append(entry)
+            current_chunk_tokens = f_tokens
+
+    # Flush any remaining
+    _flush_current_chunk()
+    
+    logger.info("Created {} chunks from {} files.", len(chunks), len(files))
+    return chunks
+
+
+def map_reduce_analysis(
+    api_key: str, 
+    model: str, 
+    prompt_template: str, 
+    chunks: list[str], 
+    repo_url: str,
+    status_callback=None
+) -> dict:
+    """Perform a Map-Reduce analysis on *chunks*."""
+    
+    def _report(msg):
+        if status_callback:
+            status_callback(msg)
+
+    # 1. MAP PHASE
+    partial_results = []
+    total_chunks = len(chunks)
+    
+    for i, chunk in enumerate(chunks, 1):
+        _report(f"Analyzing chunk {i}/{total_chunks}...")
+        
+        # Create a specific prompt for the chunk
+        map_prompt = (
+            f"You are analyzing PART {i} of {total_chunks} of the repository {repo_url}.\n\n"
+            f"{prompt_template}\n\n"
+            "INSTRUCTIONS FOR PARTIAL ANALYSIS:\n"
+            "- Identify key findings in THIS chunk only.\n"
+            "- Be concise but specific.\n"
+            "- If you see partial implementations, note them.\n"
+            "- DO NOT generate the final fully formatted report yet; provide a structured summary of observations."
+        )
+        
+        try:
+            # We must adhere to the rate limit per chunk too.
+            result = call_groq_llm(api_key, model, map_prompt, chunk)
+            partial_results.append(result["content"])
+        except Exception as e:
+            logger.error(f"Failed to analyze chunk {i}: {e}")
+            partial_results.append(f"[Error analyzing chunk {i}: {e}]")
+
+    # 2. REDUCE PHASE
+    _report("Synthesizing final report...")
+    
+    combined_findings = "\n\n=== PARTIAL FINDING ===\n".join(partial_results)
+    
+    reduce_prompt = (
+        f"You have analyzed the repository {repo_url} in {total_chunks} parts. "
+        "Below are the partial findings from each part. "
+        "Synthesize these into a SINGLE, COHERENT final report following the original audit grid format exactly.\n\n"
+        f"ORIGINAL AUDIT GRID PROMPT:\n{prompt_template}\n\n"
+        "PARTIAL FINDINGS TO SYNTHESIZE:\n"
+        f"{combined_findings}"
+    )
+    
+    reduce_system_msg = (
+        f"You are a Lead Tech Auditor. Synthesize the provided partial findings into a final report for {repo_url}."
+    )
+    
+    final_result = call_groq_llm(api_key, model, reduce_system_msg, reduce_prompt)
+    
+    return final_result
+
+
+def analyze_code_content(
+    api_key: str,
+    model: str, 
+    prompt_template: str, 
+    code_content: str, 
+    repo_url: str,
+    status_callback=None
+) -> dict:
+    """Intelligent analysis that switches to Map-Reduce if content is too large."""
+    
+    # 1. Check size
+    total_tokens = estimate_tokens(code_content)
+    
+    # Threshold: Groq's free tier/on-demand often has 8k TPM limits for large models (like Llama 3 70b or Mixtral).
+    # We set a conservative threshold to trigger chunking early.
+    TOKEN_THRESHOLD = 6000 
+    
+    if total_tokens < TOKEN_THRESHOLD:
+        # Standard Single-Pass
+        if status_callback:
+            status_callback(f"Running standard analysis (~{total_tokens} tokens)...")
+            
+        llm_content = f"GitHub Repository URL: {repo_url}\n\n{code_content}"
+        return call_groq_llm(
+            api_key, 
+            model,
+            prompt_template.format(model_name=model, repo_url=repo_url),
+            llm_content
+        )
+    else:
+        # Map-Reduce Strategy
+        if status_callback:
+            status_callback(f"Large repository detected (~{total_tokens} tokens). Switching to Map-Reduce strategy...")
+            
+        files = parse_gitingest_content(code_content)
+        # Chunk size also needs to be safe for TPM (input tokens)
+        chunks = create_chunks(files, max_tokens=6000) 
+        
+        if status_callback:
+            status_callback(f"Split into {len(chunks)} chunks for analysis.")
+            
+        return map_reduce_analysis(
+            api_key, 
+            model, 
+            prompt_template.format(model_name=model, repo_url=repo_url), 
+            chunks, 
+            repo_url, 
+            status_callback
+        )
+
+
 # ---------------------------------------------------------------------------
 # UI helpers
 # ---------------------------------------------------------------------------
