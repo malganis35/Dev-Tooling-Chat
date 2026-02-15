@@ -1,10 +1,15 @@
 [project]
 name = "dev-tooling-chat"
 version = "0.1.0"
-description = "Add your description here"
+description = "Analyze, audit and document your code in seconds — powered by AI"
 readme = "README.md"
 authors = [
     { name = "Cao Tri DO", email = "caotri.do88@gmail.com" }
+]
+keywords = ["python", "groq", "chat", "ai"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
 ]
 requires-python = ">=3.12"
 dependencies = [
@@ -15,9 +20,73 @@ dependencies = [
     "loguru>=0.7.0",
 ]
 
+dynamic = ['version']
+
 [project.scripts]
 dev-tooling-chat = "dev_tooling_chat:main"
 
 [build-system]
 requires = ["uv_build>=0.9.17,<0.10.0"]
 build-backend = "uv_build"
+
+[project.optional-dependencies]
+dev = ["pre-commit>=4.1.0, <5",
+       "commitizen>=4.9.1",]
+
+[tool.ruff]
+line-length = 120
+lint.select = [
+    "F",    # pyflakes rules
+    "E",    # pycodestyle error rules
+    "W",    # pycodestyle warning rules
+    "B",    # flake8-bugbear rules
+    "I",    # isort rules
+    "UP",   # pyupgrade rules
+    "SIM",  # flake8-simplify rules
+    "ERA",  # eradicate rules
+    "C",    # pylint convention rules
+    "D",    # pydocstyle rules
+    "ANN"   # flake8-annotations rules
+]
+lint.ignore = [
+    "D107", # Missing docstring in `__init__`
+    "D203", # incorrect-blank-line-before-class
+    "D213", # multi-line-summary-second-line
+    "E501", # line-too-long
+    "C901", # too complex
+    "ERA001", # commented out code
+    "D100", # missing docstring
+    "ERA001" # commented out code
+]
+
+[tool.ruff.format]
+indent-style = "space"
+docstring-code-format = true
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.4.0"
+tag_format = "v$version"
+version_files = [
+  "version.txt"
+]
+bump_message = "chore(release): bump version $current_version → $new_version"
+update_changelog_on_bump = true
+changelog_incremental = true
+pre_bump_hooks = [
+    "uv sync",
+    "git add uv.lock"
+]
+changelog_file = "CHANGELOG.md"
+changelog_title = "# Changelog \\n\\nAll notable changes to this project will be documented in this file.\n\nThe format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),\nand this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).\\n\\n## [Unreleased]\\n"
+changelog_message_template = """
+## {{version}} - {{date}}
+
+{{#each commits}}
+- {{message}}
+{{/each}}
+
+"""
+
+[project.urls]
+homepage = https://github.com/malganis35/Dev-Tooling-Chat/
