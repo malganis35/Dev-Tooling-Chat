@@ -10,6 +10,7 @@ from loguru import logger
 from dev_tooling_chat.utils import (
     call_groq_llm,
     clone_repo,
+    estimate_tokens,
     get_branches,
     git_diff,
     load_prompt,
@@ -33,6 +34,13 @@ def render() -> None:
         """,
         unsafe_allow_html=True,
     )
+
+    # ── Reset button ─────────────────────────────────────────────────────────
+    if st.button("🔄 Reset", key="mr_reset_btn", help="Clear all results and start over"):
+        for key in list(st.session_state.keys()):
+            if key.startswith("mr_"):
+                del st.session_state[key]
+        st.rerun()
 
     # Check API key
     api_key = st.session_state.get("groq_api_key")
@@ -77,10 +85,22 @@ def render() -> None:
                 model = st.session_state.get("groq_model", "openai/gpt-oss-120b")
                 logger.info("Generating MR description from uploaded file with model='{}'", model)
                 with st.status("Generating MR description…", expanded=True) as status:
-                    st.write("🤖 Sending diff to Groq LLM…")
-                    response = call_groq_llm(api_key, model, prompt, diff_content)
-                    st.session_state["mr_response"] = response
-                    status.update(label="Description ready ✅", state="complete", expanded=False)
+                    st.write(f"🤖 Sending diff to **{model}** (~{estimate_tokens(diff_content):,} tokens)…")
+                    result = call_groq_llm(api_key, model, prompt, diff_content)
+                    st.session_state["mr_response"] = result["content"]
+                    usage = result["usage"]
+                    st.write(
+                        f"✅ Generated in **{result['elapsed_seconds']}s** — "
+                        f"{usage['prompt_tokens']:,} prompt + {usage['completion_tokens']:,} completion tokens"
+                    )
+                    status.update(
+                        label=(
+                            f"Description ready ✅ — {result['elapsed_seconds']}s · "
+                            f"{usage['total_tokens']:,} tokens used"
+                        ),
+                        state="complete",
+                        expanded=False,
+                    )
 
     else:
         # Inline URL + button
@@ -106,17 +126,23 @@ def render() -> None:
             st.session_state.pop("mr_response", None)
             with st.status("Fetching branches…", expanded=True) as status:
                 try:
-                    st.write("📥 Cloning repository…")
+                    repo_name = github_url.rstrip("/").split("/")[-1].replace(".git", "")
+                    st.write(f"📥 Cloning **{repo_name}**…")
                     tmp_dir = tempfile.mkdtemp()
                     local_path = clone_repo(github_url, tmp_dir)
-                    st.write("🔍 Listing branches…")
+                    st.write("✅ Repository cloned")
+                    st.write("🔍 Listing remote branches…")
                     branches = get_branches(local_path)
                     st.session_state["mr_repo_path"] = local_path
                     st.session_state["mr_branches"] = branches
                     st.session_state["mr_last_url"] = github_url
                     logger.success("Found {} branches", len(branches))
-                    st.write(f"✅ Found {len(branches)} branches")
-                    status.update(label=f"{len(branches)} branches found ✅", state="complete", expanded=False)
+                    st.write(f"✅ Found **{len(branches)} branches**: {', '.join(branches[:10])}{'...' if len(branches) > 10 else ''}")
+                    status.update(
+                        label=f"{len(branches)} branches found ✅ — {repo_name}",
+                        state="complete",
+                        expanded=False,
+                    )
                 except Exception as e:
                     logger.error("Failed to fetch branches for '{}': {}", github_url, e)
                     status.update(label="Error ❌", state="error")
@@ -146,7 +172,7 @@ def render() -> None:
                 logger.info("Generating MR description: {} → {}", source_branch, target_branch)
                 with st.status("Computing diff and generating description…", expanded=True) as status:
                     try:
-                        st.write("🔄 Computing diff…")
+                        st.write(f"🔄 Computing diff: `{source_branch}` → `{target_branch}`…")
                         diff_text = git_diff(repo_path, source_branch, target_branch)
                         if not diff_text.strip():
                             logger.warning("No diff found between '{}' and '{}'", source_branch, target_branch)
@@ -154,18 +180,37 @@ def render() -> None:
                             st.warning("⚠️ No differences found between the selected branches.")
                             return
 
+                        diff_lines = diff_text.count("\n")
+                        diff_tokens = estimate_tokens(diff_text)
+                        st.write(
+                            f"✅ Diff computed — **{diff_lines:,} lines** · ~{diff_tokens:,} tokens"
+                        )
+
                         with st.expander("📄 Preview diff", expanded=False):
                             st.code(diff_text[:3000] + ("..." if len(diff_text) > 3000 else ""), language="diff")
 
-                        st.write("🤖 Generating MR description…")
-                        response = call_groq_llm(
+                        model = st.session_state.get("groq_model", "openai/gpt-oss-120b")
+                        st.write(f"🤖 Sending to **{model}** (~{diff_tokens:,} tokens)…")
+                        result = call_groq_llm(
                             api_key,
-                            st.session_state.get("groq_model", "openai/gpt-oss-120b"),
+                            model,
                             prompt,
                             diff_text,
                         )
-                        st.session_state["mr_response"] = response
-                        status.update(label="Description ready ✅", state="complete", expanded=False)
+                        st.session_state["mr_response"] = result["content"]
+                        usage = result["usage"]
+                        st.write(
+                            f"✅ Generated in **{result['elapsed_seconds']}s** — "
+                            f"{usage['prompt_tokens']:,} prompt + {usage['completion_tokens']:,} completion tokens"
+                        )
+                        status.update(
+                            label=(
+                                f"Description ready ✅ — {result['elapsed_seconds']}s · "
+                                f"{usage['total_tokens']:,} tokens used"
+                            ),
+                            state="complete",
+                            expanded=False,
+                        )
                     except Exception as e:
                         logger.error("MR description generation failed: {}", e)
                         status.update(label="Error ❌", state="error")

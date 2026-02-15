@@ -1,8 +1,10 @@
 """Shared utilities for Dev Tooling Assistant."""
 
 import os
+import re
 import subprocess
 import tempfile
+import time
 import requests
 import streamlit as st
 from groq import Groq
@@ -41,14 +43,20 @@ def fetch_groq_models(api_key: str) -> list[str]:
     return text_models
 
 
-def call_groq_llm(api_key: str, model: str, system_prompt: str, user_content: str) -> str:
+def estimate_tokens(text: str) -> int:
+    """Estimate the number of tokens in *text* (~4 chars per token)."""
+    return max(1, len(text) // 4)
+
+
+def call_groq_llm(api_key: str, model: str, system_prompt: str, user_content: str) -> dict:
     """Send *system_prompt* + *user_content* to the Groq chat API and return
-    the assistant's reply as a string."""
+    a dict with the reply and usage metadata."""
     logger.info("Calling Groq LLM with model={}", model)
     logger.debug(
         "System prompt length: {} chars | User content length: {} chars", len(system_prompt), len(user_content)
     )
     client = Groq(api_key=api_key)
+    start = time.time()
     try:
         response = client.chat.completions.create(
             model=model,
@@ -59,9 +67,20 @@ def call_groq_llm(api_key: str, model: str, system_prompt: str, user_content: st
             temperature=0.3,
             max_tokens=8192,
         )
+        elapsed = round(time.time() - start, 1)
         reply = response.choices[0].message.content
-        logger.success("Groq LLM response received ({} chars)", len(reply))
-        return reply
+        usage = response.usage
+        logger.success("Groq LLM response received ({} chars, {:.1f}s)", len(reply), elapsed)
+        return {
+            "content": reply,
+            "model": model,
+            "usage": {
+                "prompt_tokens": getattr(usage, "prompt_tokens", 0),
+                "completion_tokens": getattr(usage, "completion_tokens", 0),
+                "total_tokens": getattr(usage, "total_tokens", 0),
+            },
+            "elapsed_seconds": elapsed,
+        }
     except Exception as e:
         logger.error("Groq LLM call failed: {}", e)
         raise
@@ -86,9 +105,23 @@ def clone_repo(github_url: str, dest_dir: str) -> str:
     return local_path
 
 
-def clone_and_ingest(github_url: str) -> str:
-    """Clone a public GitHub repo, run ``gitingest`` on it and return the
-    content of the generated ``digest.txt`` file."""
+def clone_and_ingest(github_url: str, status_callback=None) -> dict:
+    """Clone a public GitHub repo, run ``gitingest`` on it and return a dict
+    with the digest content and useful metadata.
+
+    Parameters
+    ----------
+    github_url : str
+        Public GitHub URL to clone.
+    status_callback : callable, optional
+        Called with ``(message: str)`` to report intermediate progress.
+
+    Returns
+    -------
+    dict
+        Keys: content, token_estimate, char_count, line_count, file_count,
+        repo_name, elapsed_seconds.
+    """
     # Patterns to exclude from ingestion – these files are heavy and have no
     # value for a code audit, but would blow up the token count and trigger
     # Groq rate-limit errors (HTTP 413).
@@ -118,9 +151,20 @@ def clone_and_ingest(github_url: str) -> str:
         ]
     )
 
+    def _report(msg: str) -> None:
+        if status_callback:
+            status_callback(msg)
+
+    repo_name = github_url.rstrip("/").split("/")[-1].replace(".git", "")
     logger.info("Starting clone & ingest for '{}'", github_url)
+    start = time.time()
+
     with tempfile.TemporaryDirectory() as tmp:
+        _report("📥 Cloning repository…")
         local_path = clone_repo(github_url, tmp)
+        _report("✅ Repository cloned")
+
+        _report("🔄 Running gitingest — extracting source code…")
         logger.info("Running gitingest on '{}' (excluding: {})…", local_path, exclude_patterns)
         result = subprocess.run(
             [
@@ -146,8 +190,38 @@ def clone_and_ingest(github_url: str) -> str:
         logger.info("Reading digest file at '{}'", digest_path)
         with open(digest_path, "r", encoding="utf-8") as f:
             content = f.read()
-        logger.success("Digest loaded: {} chars", len(content))
-        return content
+
+        elapsed = round(time.time() - start, 1)
+
+        # Compute metadata
+        char_count = len(content)
+        line_count = content.count("\n")
+        token_est = estimate_tokens(content)
+        # Count files listed in the digest (gitingest marks files with
+        # patterns like "File: path/to/file" or similar header lines)
+        file_count = len(re.findall(r"^={4,}$", content, re.MULTILINE)) // 2 or (
+            content.count("File: ") or line_count // 50
+        )
+
+        logger.success(
+            "Digest loaded: {} chars, ~{} tokens, ~{} files, {:.1f}s",
+            char_count, token_est, file_count, elapsed,
+        )
+
+        _report(
+            f"✅ Ingestion complete — **~{token_est:,} tokens** · "
+            f"{line_count:,} lines · {char_count:,} chars · {elapsed}s"
+        )
+
+        return {
+            "content": content,
+            "token_estimate": token_est,
+            "char_count": char_count,
+            "line_count": line_count,
+            "file_count": file_count,
+            "repo_name": repo_name,
+            "elapsed_seconds": elapsed,
+        }
 
 
 def get_branches(repo_path: str) -> list[str]:

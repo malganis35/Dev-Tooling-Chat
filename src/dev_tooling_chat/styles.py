@@ -33,11 +33,18 @@ section[data-testid="stSidebar"] {{
     background: linear-gradient(180deg, {_BG_CARD} 0%, {_BG_DARK} 100%) !important;
     border-right: 1px solid {_BORDER} !important;
 }}
+section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] {{
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+}}
 section[data-testid="stSidebar"] .stRadio label {{
     padding: 0.55rem 1rem !important;
     border-radius: 10px !important;
     transition: all 0.25s ease !important;
     margin-bottom: 2px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
 }}
 section[data-testid="stSidebar"] .stRadio label:hover {{
     background: rgba(102, 126, 234, 0.10) !important;

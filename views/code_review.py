@@ -6,7 +6,7 @@ Python code quality audit with weighted scoring.
 
 import streamlit as st
 from loguru import logger
-from dev_tooling_chat.utils import call_groq_llm, clone_and_ingest, load_prompt, render_response_actions
+from dev_tooling_chat.utils import call_groq_llm, clone_and_ingest, estimate_tokens, load_prompt, render_response_actions
 
 
 def render() -> None:
@@ -25,6 +25,13 @@ def render() -> None:
         """,
         unsafe_allow_html=True,
     )
+
+    # ── Reset button ─────────────────────────────────────────────────────────
+    if st.button("🔄 Reset", key="code_audit_reset_btn", help="Clear all results and start over"):
+        for key in list(st.session_state.keys()):
+            if key.startswith("code_audit_"):
+                del st.session_state[key]
+        st.rerun()
 
     # Check API key
     api_key = st.session_state.get("groq_api_key")
@@ -86,13 +93,19 @@ def render() -> None:
             st.session_state.pop("code_audit_response", None)
             with st.status("Cloning and analyzing repository…", expanded=True) as status:
                 try:
-                    st.write("📥 Cloning repository…")
-                    code_content = clone_and_ingest(github_url)
+                    result = clone_and_ingest(github_url, status_callback=st.write)
+                    code_content = result["content"]
                     st.session_state["code_audit_code_content"] = code_content
                     st.session_state["code_audit_last_url"] = github_url
                     logger.success("Repository ingested successfully ({} chars)", len(code_content))
-                    st.write("✅ Repository ingested successfully!")
-                    status.update(label="Repository ready ✅", state="complete", expanded=False)
+                    status.update(
+                        label=(
+                            f"Repository ready ✅ — ~{result['token_estimate']:,} tokens · "
+                            f"{result['line_count']:,} lines · {result['elapsed_seconds']}s"
+                        ),
+                        state="complete",
+                        expanded=False,
+                    )
                 except Exception as e:
                     logger.error("Clone & ingest failed for '{}': {}", github_url, e)
                     status.update(label="Error ❌", state="error")
@@ -115,11 +128,24 @@ def render() -> None:
         code_content and "code_audit_response" not in st.session_state and input_method != "📄 Upload a .txt file"
     ):
         logger.info("Running code review with model='{}'", model)
+        input_tokens = estimate_tokens(code_content)
         with st.status("Running AI code review…", expanded=True) as status:
-            st.write("🤖 Sending code to Groq LLM…")
-            response = call_groq_llm(api_key, model, prompt, code_content)
-            st.session_state["code_audit_response"] = response
-            status.update(label="Review complete ✅", state="complete", expanded=False)
+            st.write(f"🤖 Sending to **{model}** (~{input_tokens:,} tokens)…")
+            result = call_groq_llm(api_key, model, prompt, code_content)
+            st.session_state["code_audit_response"] = result["content"]
+            usage = result["usage"]
+            st.write(
+                f"✅ Generated in **{result['elapsed_seconds']}s** — "
+                f"{usage['prompt_tokens']:,} prompt + {usage['completion_tokens']:,} completion tokens"
+            )
+            status.update(
+                label=(
+                    f"Review complete ✅ — {result['elapsed_seconds']}s · "
+                    f"{usage['total_tokens']:,} tokens used"
+                ),
+                state="complete",
+                expanded=False,
+            )
 
     if "code_audit_response" in st.session_state:
         st.markdown("---")
