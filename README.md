@@ -13,6 +13,10 @@ Upload a `.txt` file or point at a public GitHub repository and get instant, str
 
 </div>
 
+![alt text](docs/images/dev_tooling_assistant.png)
+
+This app is also deployed publicly on Streamlit Cloud: https://dev-tooling-chat.streamlit.app/
+
 ---
 
 ## ✨ Features
@@ -22,6 +26,13 @@ Upload a `.txt` file or point at a public GitHub repository and get instant, str
 | **🔍 Audit & Diagnostic** | Evaluate a GitHub repo against a **10-point professional audit grid** used by technical recruiters. |
 | **📝 Senior Code Review** | Get a comprehensive Python code review with **weighted scoring**, strengths, weaknesses and actionable recommendations. |
 | **🔀 Merge Request Description** | Auto-generate a **complete, structured MR description** from a git diff between two branches. |
+| **🔄 Reset Context** | Instantly **reset the analysis state** with a single click to start a fresh audit without reloading the page. |
+
+### 🚀 App Highlights
+
+- **✨ Modern UI** — built with a custom dark theme, glassmorphism effects, and smooth animations.
+- **🛡️ Robust Ingestion** — automatically filters large files (`.lock`, images, etc.) to optimize token usage and avoid rate limits.
+- **⚡ Smart Caching** — reuses cloned repositories and analysis context to speed up subsequent requests.
 
 Every feature supports two input methods:
 
@@ -55,7 +66,9 @@ dev_tooling_chat/
 │   └── config.toml                 # Streamlit theme configuration
 ├── Makefile                        # Common dev commands
 ├── pyproject.toml                  # Project metadata & dependencies
-└── uv.lock                        # Lockfile (uv)
+├── uv.lock                         # Lockfile (uv)
+├── Dockerfile                      # Docker image definition
+└── .dockerignore                   # Docker build exclusions
 ```
 
 ---
@@ -105,6 +118,19 @@ The application will open in your browser at **http://localhost:8501**.
 | `make build` | Build the distribution package |
 | `make clean` | Remove caches and build artifacts |
 | `make help` | Show all available targets |
+
+### 🐳 Docker
+
+You can also run the application using Docker:
+
+```bash
+# Build the image
+docker build -t dev-tooling-chat .
+
+# Run the container
+# Replace <your_groq_api_key> with your actual API key
+docker run -p 8501:8501 -e GROQ_API_KEY=<your_groq_api_key> dev-tooling-chat
+```
 
 ---
 
