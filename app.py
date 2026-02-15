@@ -77,11 +77,7 @@ with st.sidebar:
     if st.session_state.get("groq_api_key"):
         try:
             models = fetch_groq_models(st.session_state["groq_api_key"])
-            default_idx = (
-                models.index("openai/gpt-oss-120b")
-                if "openai/gpt-oss-120b" in models
-                else 0
-            )
+            default_idx = models.index("openai/gpt-oss-120b") if "openai/gpt-oss-120b" in models else 0
             selected_model = st.selectbox(
                 "🤖 Model",
                 options=models,
@@ -172,21 +168,30 @@ if page == "🏠 Home":
     # Navigation buttons below the cards
     col1, col2, col3 = st.columns(3, gap="medium")
     with col1:
-        st.button("Open Audit →", key="go_audit", on_click=_go_to, args=("🔍 Audit & Diagnostic",), use_container_width=True)
+        st.button(
+            "Open Audit →", key="go_audit", on_click=_go_to, args=("🔍 Audit & Diagnostic",), use_container_width=True
+        )
     with col2:
-        st.button("Open Review →", key="go_review", on_click=_go_to, args=("📝 Senior Code Review",), use_container_width=True)
+        st.button(
+            "Open Review →", key="go_review", on_click=_go_to, args=("📝 Senior Code Review",), use_container_width=True
+        )
     with col3:
-        st.button("Open MR →", key="go_mr", on_click=_go_to, args=("🔀 Merge Request Description",), use_container_width=True)
+        st.button(
+            "Open MR →", key="go_mr", on_click=_go_to, args=("🔀 Merge Request Description",), use_container_width=True
+        )
 
 
 elif page == "🔍 Audit & Diagnostic":
     from views.audit_diagnostic import render
+
     render()
 
 elif page == "📝 Senior Code Review":
     from views.code_review import render
+
     render()
 
 elif page == "🔀 Merge Request Description":
     from views.merge_request import render
+
     render()

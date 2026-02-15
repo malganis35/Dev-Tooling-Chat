@@ -33,8 +33,8 @@ def render() -> None:
         st.markdown(
             '<div class="dtc-alert">'
             '<span class="alert-icon">🔑</span>'
-            '<span>Please enter your <strong>Groq API key</strong> in the sidebar to enable AI features.</span>'
-            '</div>',
+            "<span>Please enter your <strong>Groq API key</strong> in the sidebar to enable AI features.</span>"
+            "</div>",
             unsafe_allow_html=True,
         )
         return
@@ -103,7 +103,9 @@ def render() -> None:
     else:
         run = False
 
-    if run or (code_content and "code_audit_response" not in st.session_state and input_method != "📄 Upload a .txt file"):
+    if run or (
+        code_content and "code_audit_response" not in st.session_state and input_method != "📄 Upload a .txt file"
+    ):
         logger.info("Running code review with model='{}'", model)
         with st.status("Running AI code review…", expanded=True) as status:
             st.write("🤖 Sending code to Groq LLM…")

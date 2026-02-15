@@ -33,8 +33,8 @@ def render() -> None:
         st.markdown(
             '<div class="dtc-alert">'
             '<span class="alert-icon">🔑</span>'
-            '<span>Please enter your <strong>Groq API key</strong> in the sidebar to enable AI features.</span>'
-            '</div>',
+            "<span>Please enter your <strong>Groq API key</strong> in the sidebar to enable AI features.</span>"
+            "</div>",
             unsafe_allow_html=True,
         )
         return

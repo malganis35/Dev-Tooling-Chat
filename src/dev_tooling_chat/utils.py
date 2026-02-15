@@ -45,8 +45,9 @@ def call_groq_llm(api_key: str, model: str, system_prompt: str, user_content: st
     """Send *system_prompt* + *user_content* to the Groq chat API and return
     the assistant's reply as a string."""
     logger.info("Calling Groq LLM with model={}", model)
-    logger.debug("System prompt length: {} chars | User content length: {} chars",
-                 len(system_prompt), len(user_content))
+    logger.debug(
+        "System prompt length: {} chars | User content length: {} chars", len(system_prompt), len(user_content)
+    )
     client = Groq(api_key=api_key)
     try:
         response = client.chat.completions.create(
@@ -70,6 +71,7 @@ def call_groq_llm(api_key: str, model: str, system_prompt: str, user_content: st
 # Git helpers
 # ---------------------------------------------------------------------------
 
+
 def clone_repo(github_url: str, dest_dir: str) -> str:
     """Clone a public GitHub repo into *dest_dir* and return the local path."""
     repo_name = github_url.rstrip("/").split("/")[-1].replace(".git", "")
@@ -90,29 +92,31 @@ def clone_and_ingest(github_url: str) -> str:
     # Patterns to exclude from ingestion – these files are heavy and have no
     # value for a code audit, but would blow up the token count and trigger
     # Groq rate-limit errors (HTTP 413).
-    exclude_patterns = ",".join([
-        "uv.lock",
-        "poetry.lock",
-        "package-lock.json",
-        "yarn.lock",
-        "*.docx",
-        "*.pdf",
-        "*.xlsx",
-        "*.pptx",
-        "*.bin",
-        "*.exe",
-        "*.zip",
-        "*.tar.gz",
-        "*.png",
-        "*.jpg",
-        "*.jpeg",
-        "*.gif",
-        "*.svg",
-        "*.woff",
-        "*.woff2",
-        "*.ttf",
-        "*.eot",
-    ])
+    exclude_patterns = ",".join(
+        [
+            "uv.lock",
+            "poetry.lock",
+            "package-lock.json",
+            "yarn.lock",
+            "*.docx",
+            "*.pdf",
+            "*.xlsx",
+            "*.pptx",
+            "*.bin",
+            "*.exe",
+            "*.zip",
+            "*.tar.gz",
+            "*.png",
+            "*.jpg",
+            "*.jpeg",
+            "*.gif",
+            "*.svg",
+            "*.woff",
+            "*.woff2",
+            "*.ttf",
+            "*.eot",
+        ]
+    )
 
     logger.info("Starting clone & ingest for '{}'", github_url)
     with tempfile.TemporaryDirectory() as tmp:
@@ -120,8 +124,14 @@ def clone_and_ingest(github_url: str) -> str:
         logger.info("Running gitingest on '{}' (excluding: {})…", local_path, exclude_patterns)
         result = subprocess.run(
             [
-                "uv", "run", "--with", "gitingest", "gitingest", ".",
-                "--exclude-pattern", exclude_patterns,
+                "uv",
+                "run",
+                "--with",
+                "gitingest",
+                "gitingest",
+                ".",
+                "--exclude-pattern",
+                exclude_patterns,
             ],
             cwd=local_path,
             check=True,
@@ -161,6 +171,7 @@ def git_diff(repo_path: str, source_branch: str, target_branch: str) -> str:
 # ---------------------------------------------------------------------------
 # UI helpers
 # ---------------------------------------------------------------------------
+
 
 def load_prompt(filename: str) -> str:
     """Load a prompt file from the ``prompts/`` directory."""
