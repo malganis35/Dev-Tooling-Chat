@@ -29,7 +29,7 @@ with st.sidebar:
             <img src="https://i.postimg.cc/T1gjvpMg/logo-astrodata-v2.png"
                  width="100" style="border-radius:16px; margin-bottom:0.2rem;" />
             <h2>Dev Tooling Assistant</h2>
-            <p>AI-powered code assistant</p>
+            <p>AI-powered dev assistant</p>
         </div>
         <hr class="brand-divider" />
         """,
@@ -72,6 +72,12 @@ with st.sidebar:
         st.session_state["groq_api_key"] = api_key
         logger.info("Groq API key provided by user")
         st.success("API key saved ✅")
+    st.markdown(
+        '<a href="https://console.groq.com/keys" target="_blank" '
+        'style="font-size:0.8rem; color:#667eea; text-decoration:none;">'
+        '🔗 Do not have a Groq API key? Get one here →</a>',
+        unsafe_allow_html=True,
+    )
 
     # Model selector (only visible once the API key is provided)
     if st.session_state.get("groq_api_key"):
@@ -111,8 +117,8 @@ if page == "🏠 Home":
         <div class="hero">
             <span class="hero-badge">✨ AI-Powered Developer Tools</span>
             <h1>Dev Tooling Assistant</h1>
-            <p>Analyze, audit and document your code in seconds
-               with the power of artificial intelligence.</p>
+            <p>Analyze and audit your code in seconds
+               with the power of AI</p>
         </div>
         """,
         unsafe_allow_html=True,
