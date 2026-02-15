@@ -11,6 +11,7 @@ import streamlit as st
 from git import Repo
 from groq import Groq
 from loguru import logger
+from collections.abc import Callable
 
 # ---------------------------------------------------------------------------
 # LLM
@@ -107,7 +108,7 @@ def clone_repo(github_url: str, dest_dir: str) -> str:
     return local_path
 
 
-def clone_and_ingest(github_url: str, status_callback: callable | None = None) -> dict:
+def clone_and_ingest(github_url: str, status_callback: Callable | None = None) -> dict:
     """Clone a public GitHub repo and run ``gitingest`` on it.
 
     Returns a dict with the digest content and useful metadata.
@@ -478,7 +479,7 @@ def map_reduce_analysis(
     prompt_template: str,
     chunks: list[str],
     repo_url: str,
-    status_callback: callable | None = None,
+    status_callback: Callable | None = None,
 ) -> dict:
     """Perform a Map-Reduce analysis on *chunks*."""
 
@@ -541,7 +542,7 @@ def analyze_code_content(
     prompt_template: str,
     code_content: str,
     repo_url: str,
-    status_callback: callable | None = None,
+    status_callback: Callable | None = None,
 ) -> dict:
     """Intelligent analysis that switches to Map-Reduce if content is too large."""
     # 1. Check size
