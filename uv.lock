@@ -172,7 +172,7 @@ requires-dist = [
     { name = "groq", specifier = ">=0.15.0" },
     { name = "loguru", specifier = ">=0.7.0" },
     { name = "requests", specifier = ">=2.31.0" },
-    { name = "streamlit", specifier = ">=1.40.0" },
+    { name = "streamlit", specifier = ">=1.44.0" },
 ]
 
 [[package]]
