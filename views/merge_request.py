@@ -19,17 +19,32 @@ from dev_tooling_chat.utils import (
 
 def render() -> None:
     logger.info("Rendering Merge Request Description page")
-    st.title("🔀 Merge Request Description")
+
+    # Styled page header
     st.markdown(
-        "Auto-generate a **complete, structured Merge Request description** "
-        "from a git diff between two branches."
+        """
+        <div class="page-header">
+            <div class="icon-badge">🔀</div>
+            <div class="header-text">
+                <h1>Merge Request Description</h1>
+                <p>Auto-generate a structured MR description from a git diff between two branches.</p>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     # Check API key
     api_key = st.session_state.get("groq_api_key")
     if not api_key:
         logger.warning("No API key found in session state")
-        st.warning("⚠️ Please enter your Groq API key in the sidebar ⚙️ Settings first.")
+        st.markdown(
+            '<div class="dtc-alert">'
+            '<span class="alert-icon">🔑</span>'
+            '<span>Please enter your <strong>Groq API key</strong> in the sidebar to enable AI features.</span>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
         return
 
     prompt = load_prompt("mr_assistant.txt")

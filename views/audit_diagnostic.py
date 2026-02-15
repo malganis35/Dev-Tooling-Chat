@@ -11,17 +11,32 @@ from dev_tooling_chat.utils import call_groq_llm, clone_and_ingest, load_prompt,
 
 def render() -> None:
     logger.info("Rendering Audit & Diagnostic page")
-    st.title("🔍 Audit & Diagnostic")
+
+    # Styled page header
     st.markdown(
-        "Evaluate a code repository against a **10-point professional audit grid** "
-        "used by technical recruiters."
+        """
+        <div class="page-header">
+            <div class="icon-badge">🔍</div>
+            <div class="header-text">
+                <h1>Audit &amp; Diagnostic</h1>
+                <p>Evaluate a repository against a 10-point professional audit grid.</p>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     # Check API key
     api_key = st.session_state.get("groq_api_key")
     if not api_key:
         logger.warning("No API key found in session state")
-        st.warning("⚠️ Please enter your Groq API key in the sidebar ⚙️ Settings first.")
+        st.markdown(
+            '<div class="dtc-alert">'
+            '<span class="alert-icon">🔑</span>'
+            '<span>Please enter your <strong>Groq API key</strong> in the sidebar to enable AI features.</span>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
         return
 
     prompt = load_prompt("repo_recrutement.txt")

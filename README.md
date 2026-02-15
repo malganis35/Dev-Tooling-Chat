@@ -1,4 +1,4 @@
-# 🛠️ Dev Tooling Chat
+# 🛠️ Dev Tooling Assistant
 
 **AI-powered code analysis assistant** built with [Streamlit](https://streamlit.io/) and the [Groq API](https://groq.com/).  
 Upload a `.txt` file or point at a public GitHub repository and get instant, structured feedback — from recruitment-grade audits to senior-level code reviews and auto-generated merge request descriptions.

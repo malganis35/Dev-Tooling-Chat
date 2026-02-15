@@ -1,1 +1,1 @@
-# Pages package for Dev Tooling Chat.
+# Pages package for Dev Tooling Assistant.

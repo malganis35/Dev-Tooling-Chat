@@ -1,4 +1,4 @@
-"""Dev Tooling Chat — Streamlit Application.
+"""Dev Tooling Assistant — Streamlit Application.
 
 A visual interface for AI-powered code analysis tools using the Groq API.
 """
@@ -6,30 +6,42 @@ A visual interface for AI-powered code analysis tools using the Groq API.
 import streamlit as st
 from loguru import logger
 from dev_tooling_chat.utils import fetch_groq_models
+from styles import inject_global_css
 
-logger.info("Starting Dev Tooling Chat application")
+logger.info("Starting Dev Tooling Assistant application")
 
 st.set_page_config(
-    page_title="Dev Tooling Chat",
+    page_title="Dev Tooling Assistant",
     page_icon="🛠️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
+# ── Inject global CSS design system ──────────────────────────────────────────
+inject_global_css()
+
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.image(
-            "https://i.postimg.cc/T1gjvpMg/logo-astrodata-v2.png",
-            width=200,
-        )
-    st.title("Dev Tooling Chat")
-    st.markdown("Your AI-powered code analysis assistant")
-    st.markdown("---")
+    # Branded header
+    st.markdown(
+        """
+        <div class="sidebar-brand">
+            <img src="https://i.postimg.cc/T1gjvpMg/logo-astrodata-v2.png"
+                 width="100" style="border-radius:16px; margin-bottom:0.2rem;" />
+            <h2>Dev Tooling Assistant</h2>
+            <p>AI-powered code assistant</p>
+        </div>
+        <hr class="brand-divider" />
+        """,
+        unsafe_allow_html=True,
+    )
 
     # Navigation
-    st.subheader("📂 Features")
+    st.markdown(
+        '<p style="font-size:0.78rem; text-transform:uppercase; letter-spacing:0.08em; '
+        'color:#94a3b8; font-weight:600; margin-bottom:0.3rem;">Navigation</p>',
+        unsafe_allow_html=True,
+    )
     page = st.radio(
         "Navigate to",
         options=[
@@ -41,9 +53,15 @@ with st.sidebar:
         label_visibility="collapsed",
         key="nav_radio",
     )
-    st.markdown("---")
+
+    st.markdown('<hr class="brand-divider" />', unsafe_allow_html=True)
 
     # API key input
+    st.markdown(
+        '<p style="font-size:0.78rem; text-transform:uppercase; letter-spacing:0.08em; '
+        'color:#94a3b8; font-weight:600; margin-bottom:0.3rem;">Settings</p>',
+        unsafe_allow_html=True,
+    )
     api_key = st.text_input(
         "🔑 Groq API Key",
         type="password",
@@ -76,52 +94,80 @@ with st.sidebar:
             logger.error("Failed to fetch models: {}", e)
             st.error(f"Could not fetch models: {e}")
 
+    # Footer
+    st.markdown(
+        """
+        <div style="position:fixed; bottom:1rem; padding:0.5rem 1rem;
+                    font-size:0.72rem; color:#64748b;">
+            Built with ❤️ using Streamlit & Groq
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 # ── Page routing ─────────────────────────────────────────────────────────────
 logger.info("Navigating to page: {}", page)
 
 if page == "🏠 Home":
-    st.title("🛠️ Dev Tooling Chat")
-    st.markdown(
-        "Your **AI-powered code analysis assistant**. "
-        "Select a feature from the sidebar to get started."
-    )
-    st.markdown("")
-
-    # Helper to navigate to a page
-    def _go_to(page_name: str) -> None:
-        st.session_state["nav_radio"] = page_name
-
-    st.info(
-        "💡 **Getting started:** Enter your Groq API key in the sidebar, "
-        "then select a feature.",
-        icon="ℹ️",
-    )
-
-    st.markdown("")
-
-    # Feature cards — HTML for guaranteed equal height
+    # Hero section
     st.markdown(
         """
-        <div style="display:flex; gap:1rem; margin-bottom:1rem;">
-            <div style="flex:1; border:1px solid #e0e0e0; border-radius:12px; padding:1.5rem; min-height:220px; display:flex; flex-direction:column;">
-                <h3 style="margin-top:0;">🔍 Audit & Diagnostic</h3>
-                <p style="flex:1;">Evaluate a GitHub repository against a <strong>10-point professional audit grid</strong> used by technical recruiters.</p>
-                <p style="color:#888; font-size:0.85rem; margin-bottom:0;">Best for: recruitment evaluation</p>
+        <div class="hero">
+            <span class="hero-badge">✨ AI-Powered Developer Tools</span>
+            <h1>Dev Tooling Assistant</h1>
+            <p>Analyze, audit and document your code in seconds
+               with the power of artificial intelligence.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Getting started alert
+    st.markdown(
+        """
+        <div class="dtc-alert">
+            <span class="alert-icon">💡</span>
+            <span><strong>Getting started:</strong> enter your Groq API key in the sidebar,
+            then select a feature below.</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown("")
+
+    # Feature cards
+    st.markdown(
+        """
+        <div class="card-grid">
+            <div class="feature-card">
+                <span class="card-icon">🔍</span>
+                <h3>Audit &amp; Diagnostic</h3>
+                <p>Evaluate a GitHub repository against a <strong>10-point professional
+                audit grid</strong> used by technical recruiters.</p>
+                <span class="card-tag">Recruitment</span>
             </div>
-            <div style="flex:1; border:1px solid #e0e0e0; border-radius:12px; padding:1.5rem; min-height:220px; display:flex; flex-direction:column;">
-                <h3 style="margin-top:0;">📝 Code Review</h3>
-                <p style="flex:1;">Get a <strong>comprehensive Python code review</strong> with weighted scoring, strengths, weaknesses, and actionable recommendations.</p>
-                <p style="color:#888; font-size:0.85rem; margin-bottom:0;">Best for: code quality improvement</p>
+            <div class="feature-card">
+                <span class="card-icon">📝</span>
+                <h3>Senior Code Review</h3>
+                <p>Get a <strong>comprehensive Python code review</strong> with weighted scoring,
+                strengths, weaknesses and actionable recommendations.</p>
+                <span class="card-tag">Quality</span>
             </div>
-            <div style="flex:1; border:1px solid #e0e0e0; border-radius:12px; padding:1.5rem; min-height:220px; display:flex; flex-direction:column;">
-                <h3 style="margin-top:0;">🔀 Merge Request</h3>
-                <p style="flex:1;">Auto-generate a <strong>complete, structured MR description</strong> from a git diff between two branches.</p>
-                <p style="color:#888; font-size:0.85rem; margin-bottom:0;">Best for: pull request automation</p>
+            <div class="feature-card">
+                <span class="card-icon">🔀</span>
+                <h3>Merge Request</h3>
+                <p>Auto-generate a <strong>complete, structured MR description</strong>
+                from a git diff between two branches.</p>
+                <span class="card-tag">Automation</span>
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
+    # Helper to navigate to a page
+    def _go_to(page_name: str) -> None:
+        st.session_state["nav_radio"] = page_name
 
     # Navigation buttons below the cards
     col1, col2, col3 = st.columns(3, gap="medium")
@@ -132,12 +178,12 @@ if page == "🏠 Home":
     with col3:
         st.button("Open MR →", key="go_mr", on_click=_go_to, args=("🔀 Merge Request Description",), use_container_width=True)
 
-    
+
 elif page == "🔍 Audit & Diagnostic":
     from views.audit_diagnostic import render
     render()
 
-elif page == "� Senior Code Review":
+elif page == "📝 Senior Code Review":
     from views.code_review import render
     render()
 

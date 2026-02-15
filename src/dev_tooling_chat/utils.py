@@ -1,4 +1,4 @@
-"""Shared utilities for Dev Tooling Chat."""
+"""Shared utilities for Dev Tooling Assistant."""
 
 import os
 import subprocess
@@ -178,17 +178,17 @@ def load_prompt(filename: str) -> str:
 
 def render_response_actions(response_text: str, key_prefix: str) -> None:
     """Render a copy-to-clipboard button and a download button for *response_text*."""
-    import html as html_mod
+    import base64
     import streamlit.components.v1 as components
 
     logger.debug("Rendering response actions for key_prefix='{}'", key_prefix)
 
-    escaped = html_mod.escape(response_text).replace("`", "\\`").replace("${", "\\${")
+    b64_text = base64.b64encode(response_text.encode()).decode()
 
     copy_button_html = f"""
     <button id="copy-btn-{key_prefix}"
         onclick="
-            navigator.clipboard.writeText(decodeURIComponent(atob('{__import__('base64').b64encode(response_text.encode()).decode()}')
+            navigator.clipboard.writeText(decodeURIComponent(atob('{b64_text}')
                 .split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')))
             .then(() => {{
                 const btn = document.getElementById('copy-btn-{key_prefix}');
@@ -201,21 +201,21 @@ def render_response_actions(response_text: str, key_prefix: str) -> None:
             }});
         "
         style="
-            padding: 8px 24px;
-            font-size: 14px;
+            padding: 0.55rem 1.4rem;
+            font-size: 0.92rem;
             font-weight: 600;
             color: white;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
-            transition: all 0.25s ease;
-            margin-right: 8px;
-            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             letter-spacing: 0.01em;
+            box-shadow: 0 2px 8px rgba(102,126,234,0.20);
         "
-        onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(102,126,234,0.3)'"
-        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'"
+        onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(102,126,234,0.35)'"
+        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(102,126,234,0.20)'"
     >📋 Copy response</button>
     """
 

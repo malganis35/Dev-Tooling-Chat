@@ -11,17 +11,32 @@ from dev_tooling_chat.utils import call_groq_llm, clone_and_ingest, load_prompt,
 
 def render() -> None:
     logger.info("Rendering Code Review page")
-    st.title("📝 Code Review")
+
+    # Styled page header
     st.markdown(
-        "Get a **comprehensive Python code review** with weighted scoring, "
-        "strengths, weaknesses and actionable recommendations."
+        """
+        <div class="page-header">
+            <div class="icon-badge">📝</div>
+            <div class="header-text">
+                <h1>Senior Code Review</h1>
+                <p>Comprehensive Python code review with weighted scoring and actionable recommendations.</p>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     # Check API key
     api_key = st.session_state.get("groq_api_key")
     if not api_key:
         logger.warning("No API key found in session state")
-        st.warning("⚠️ Please enter your Groq API key in the sidebar ⚙️ Settings first.")
+        st.markdown(
+            '<div class="dtc-alert">'
+            '<span class="alert-icon">🔑</span>'
+            '<span>Please enter your <strong>Groq API key</strong> in the sidebar to enable AI features.</span>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
         return
 
     prompt = load_prompt("code_audit.txt")
