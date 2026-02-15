@@ -1,6 +1,6 @@
 [project]
 name = "dev-tooling-chat"
-version = "0.1.0"
+version = "0.6.0"
 description = "Analyze, audit and document your code in seconds — powered by AI"
 readme = "README.md"
 authors = [
@@ -64,7 +64,7 @@ docstring-code-format = true
 
 [tool.commitizen]
 name = "cz_conventional_commits"
-version = "0.6.0"
+version = "0.4.0"
 tag_format = "v$version"
 version_files = [
   "version.txt",
