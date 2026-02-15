@@ -1,7 +1,17 @@
+<div align="center">
+
 # 🛠️ Dev Tooling Assistant
 
-**AI-powered code analysis assistant** built with [Streamlit](https://streamlit.io/) and the [Groq API](https://groq.com/).  
+**Analyze, audit and document your code in seconds — powered by AI.**
+
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.44+-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io)
+[![Groq](https://img.shields.io/badge/Groq_API-F55036?style=for-the-badge&logo=data:image/svg+xml;base64,&logoColor=white)](https://groq.com)
+[![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)](LICENSE)
+
 Upload a `.txt` file or point at a public GitHub repository and get instant, structured feedback — from recruitment-grade audits to senior-level code reviews and auto-generated merge request descriptions.
+
+</div>
 
 ---
 
@@ -9,7 +19,7 @@ Upload a `.txt` file or point at a public GitHub repository and get instant, str
 
 | Feature | Description |
 |---------|-------------|
-| **🔍 Audit & Diagnostic** | Evaluate a GitHub repository against a **10-point professional audit grid** used by technical recruiters. |
+| **🔍 Audit & Diagnostic** | Evaluate a GitHub repo against a **10-point professional audit grid** used by technical recruiters. |
 | **📝 Senior Code Review** | Get a comprehensive Python code review with **weighted scoring**, strengths, weaknesses and actionable recommendations. |
 | **🔀 Merge Request Description** | Auto-generate a **complete, structured MR description** from a git diff between two branches. |
 
@@ -35,15 +45,17 @@ dev_tooling_chat/
 ├── src/
 │   └── dev_tooling_chat/
 │       ├── __init__.py
+│       ├── styles.py               # Global CSS design system (dark theme)
 │       └── utils.py                # Shared utilities (LLM, Git, UI helpers)
 ├── prompts/
 │   ├── repo_recrutement.txt        # System prompt for Audit & Diagnostic
 │   ├── code_audit.txt              # System prompt for Code Review
 │   └── mr_assistant.txt            # System prompt for MR Description
+├── .streamlit/
+│   └── config.toml                 # Streamlit theme configuration
 ├── Makefile                        # Common dev commands
 ├── pyproject.toml                  # Project metadata & dependencies
-├── uv.lock                        # Lockfile (uv)
-└── .gitignore
+└── uv.lock                        # Lockfile (uv)
 ```
 
 ---
@@ -80,8 +92,6 @@ The application will open in your browser at **http://localhost:8501**.
 
 ### Make Targets
 
-The project includes a `Makefile` for common tasks:
-
 | Command | Description |
 |---------|-------------|
 | `make install` | Install all dependencies via `uv sync` |
@@ -114,10 +124,10 @@ The project includes a `Makefile` for common tasks:
 
 ```
 ┌──────────────────────────────────────┐
-│              Streamlit UI            │
-│         (app.py + views/)            │
+│           Streamlit UI               │
+│      (app.py + views/ + styles)      │
 ├──────────────────────────────────────┤
-│         dev_tooling_chat.utils       │
+│       dev_tooling_chat.utils         │
 │  ┌───────────┬──────────┬──────────┐ │
 │  │ LLM layer │ Git      │ UI       │ │
 │  │ (Groq API)│ helpers  │ helpers  │ │
@@ -130,6 +140,7 @@ The project includes a `Makefile` for common tasks:
 
 - **`app.py`** — Configures the Streamlit page, renders the sidebar (API key input, model selector, navigation), and routes to the appropriate view.
 - **`views/`** — Each feature is a self-contained module exposing a `render()` function.
+- **`src/dev_tooling_chat/styles.py`** — Global CSS design system providing the dark theme, glassmorphism effects, gradient accents, and responsive styling.
 - **`src/dev_tooling_chat/utils.py`** — Shared logic split into three sections:
   - **LLM** — `fetch_groq_models()` and `call_groq_llm()` for interacting with the Groq chat API.
   - **Git helpers** — `clone_repo()`, `clone_and_ingest()`, `get_branches()`, `git_diff()` for repository operations.
@@ -142,10 +153,11 @@ The project includes a `Makefile` for common tasks:
 
 | Package | Purpose |
 |---------|---------|
-| [streamlit](https://pypi.org/project/streamlit/) ≥ 1.40 | Web UI framework |
+| [streamlit](https://pypi.org/project/streamlit/) ≥ 1.44 | Web UI framework |
 | [groq](https://pypi.org/project/groq/) ≥ 0.15 | Groq API Python client |
 | [gitpython](https://pypi.org/project/GitPython/) ≥ 3.1 | Git operations (clone, diff, branches) |
 | [requests](https://pypi.org/project/requests/) ≥ 2.31 | HTTP calls to the Groq models endpoint |
+| [loguru](https://pypi.org/project/loguru/) ≥ 0.7 | Structured logging |
 
 > **Runtime tool:** The *Audit & Diagnostic* and *Code Review* features also invoke [`gitingest`](https://github.com/cyclotruc/gitingest) via `uv run --with gitingest gitingest .` to digest a cloned repository into a single text file.
 
@@ -163,10 +175,16 @@ The project includes a `Makefile` for common tasks:
 
 ## 📄 License
 
-This project does not currently specify a license. Please contact the author before reusing.
+This project is licensed under the [MIT License](LICENSE).
 
 ---
+
+<div align="center">
 
 ## 👤 Author
 
 **Cao Tri DO** — [caotri.do88@gmail.com](mailto:caotri.do88@gmail.com)
+
+Made with ❤️ using Streamlit & Groq
+
+</div>
