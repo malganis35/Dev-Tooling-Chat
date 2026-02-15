@@ -201,7 +201,7 @@ def render_response_actions(response_text: str, key_prefix: str) -> None:
             }});
         "
         style="
-            padding: 8px 20px;
+            padding: 8px 24px;
             font-size: 14px;
             font-weight: 600;
             color: white;
@@ -209,11 +209,13 @@ def render_response_actions(response_text: str, key_prefix: str) -> None:
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.25s ease;
             margin-right: 8px;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: 0.01em;
         "
-        onmouseover="this.style.opacity='0.85'"
-        onmouseout="this.style.opacity='1'"
+        onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(102,126,234,0.3)'"
+        onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'"
     >📋 Copy response</button>
     """
 

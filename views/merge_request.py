@@ -4,7 +4,6 @@ Uses the prompt from ``prompts/mr_assistant.txt`` to auto-generate a complete
 MR description from a git diff.
 """
 
-import os
 import tempfile
 import streamlit as st
 from loguru import logger
@@ -25,13 +24,12 @@ def render() -> None:
         "Auto-generate a **complete, structured Merge Request description** "
         "from a git diff between two branches."
     )
-    st.markdown("---")
 
     # Check API key
     api_key = st.session_state.get("groq_api_key")
     if not api_key:
         logger.warning("No API key found in session state")
-        st.warning("⚠️ Please enter your Groq API key in the sidebar first.")
+        st.warning("⚠️ Please enter your Groq API key in the sidebar ⚙️ Settings first.")
         return
 
     prompt = load_prompt("mr_assistant.txt")
@@ -55,6 +53,7 @@ def render() -> None:
         if uploaded_file is not None:
             diff_content = uploaded_file.read().decode("utf-8")
             logger.info("Diff file uploaded: '{}' ({} chars)", uploaded_file.name, len(diff_content))
+            st.success(f"✅ File loaded — **{uploaded_file.name}**")
             with st.expander("📄 Preview uploaded diff", expanded=False):
                 st.code(diff_content[:3000] + ("..." if len(diff_content) > 3000 else ""), language="diff")
 
@@ -62,31 +61,42 @@ def render() -> None:
             if st.button("🚀 Generate MR Description", key="mr_run_file_btn"):
                 model = st.session_state.get("groq_model", "openai/gpt-oss-120b")
                 logger.info("Generating MR description from uploaded file with model='{}'", model)
-                with st.spinner("🤖 Generating MR description with Groq LLM…"):
+                with st.status("Generating MR description…", expanded=True) as status:
+                    st.write("🤖 Sending diff to Groq LLM…")
                     response = call_groq_llm(api_key, model, prompt, diff_content)
                     st.session_state["mr_response"] = response
+                    status.update(label="Description ready ✅", state="complete", expanded=False)
 
     else:
-        github_url = st.text_input(
-            "Enter a public GitHub repository URL",
-            placeholder="https://github.com/user/repo",
-            key="mr_github_url",
-        )
+        # Inline URL + button
+        url_col, btn_col = st.columns([3, 1], vertical_alignment="bottom")
+        with url_col:
+            github_url = st.text_input(
+                "Enter a public GitHub repository URL",
+                placeholder="https://github.com/user/repo",
+                key="mr_github_url",
+            )
+        with btn_col:
+            fetch_clicked = st.button("📥 Fetch branches", key="mr_fetch_btn", use_container_width=True)
 
         # Step 1 — Clone and list branches
-        if github_url and st.button("📥 Fetch branches", key="mr_fetch_btn"):
+        if github_url and fetch_clicked:
             logger.info("Fetching branches for URL: {}", github_url)
-            with st.spinner("Cloning repository and fetching branches…"):
+            with st.status("Fetching branches…", expanded=True) as status:
                 try:
+                    st.write("📥 Cloning repository…")
                     tmp_dir = tempfile.mkdtemp()
                     local_path = clone_repo(github_url, tmp_dir)
+                    st.write("🔍 Listing branches…")
                     branches = get_branches(local_path)
                     st.session_state["mr_repo_path"] = local_path
                     st.session_state["mr_branches"] = branches
                     logger.success("Found {} branches", len(branches))
-                    st.success(f"Found {len(branches)} branches ✅")
+                    st.write(f"✅ Found {len(branches)} branches")
+                    status.update(label=f"{len(branches)} branches found ✅", state="complete", expanded=False)
                 except Exception as e:
                     logger.error("Failed to fetch branches for '{}': {}", github_url, e)
+                    status.update(label="Error ❌", state="error")
                     st.error(f"❌ Error: {e}")
                     return
 
@@ -111,21 +121,31 @@ def render() -> None:
             if st.button("🚀 Generate MR Description", key="mr_run_github_btn"):
                 repo_path = st.session_state["mr_repo_path"]
                 logger.info("Generating MR description: {} → {}", source_branch, target_branch)
-                with st.spinner("Computing diff and generating MR description…"):
+                with st.status("Computing diff and generating description…", expanded=True) as status:
                     try:
+                        st.write("🔄 Computing diff…")
                         diff_text = git_diff(repo_path, source_branch, target_branch)
                         if not diff_text.strip():
                             logger.warning("No diff found between '{}' and '{}'", source_branch, target_branch)
+                            status.update(label="No differences found", state="error")
                             st.warning("⚠️ No differences found between the selected branches.")
                             return
 
                         with st.expander("📄 Preview diff", expanded=False):
                             st.code(diff_text[:3000] + ("..." if len(diff_text) > 3000 else ""), language="diff")
 
-                        response = call_groq_llm(api_key, st.session_state.get("groq_model", "openai/gpt-oss-120b"), prompt, diff_text)
+                        st.write("🤖 Generating MR description…")
+                        response = call_groq_llm(
+                            api_key,
+                            st.session_state.get("groq_model", "openai/gpt-oss-120b"),
+                            prompt,
+                            diff_text,
+                        )
                         st.session_state["mr_response"] = response
+                        status.update(label="Description ready ✅", state="complete", expanded=False)
                     except Exception as e:
                         logger.error("MR description generation failed: {}", e)
+                        status.update(label="Error ❌", state="error")
                         st.error(f"❌ Error: {e}")
                         return
 

@@ -16,13 +16,12 @@ def render() -> None:
         "Get a **comprehensive Python code review** with weighted scoring, "
         "strengths, weaknesses and actionable recommendations."
     )
-    st.markdown("---")
 
     # Check API key
     api_key = st.session_state.get("groq_api_key")
     if not api_key:
         logger.warning("No API key found in session state")
-        st.warning("⚠️ Please enter your Groq API key in the sidebar first.")
+        st.warning("⚠️ Please enter your Groq API key in the sidebar ⚙️ Settings first.")
         return
 
     prompt = load_prompt("code_audit.txt")
@@ -46,24 +45,34 @@ def render() -> None:
         if uploaded_file is not None:
             code_content = uploaded_file.read().decode("utf-8")
             logger.info("File uploaded: '{}' ({} chars)", uploaded_file.name, len(code_content))
+            st.success(f"✅ File loaded — **{uploaded_file.name}**")
             with st.expander("📄 Preview uploaded content", expanded=False):
                 st.code(code_content[:3000] + ("..." if len(code_content) > 3000 else ""))
     else:
-        github_url = st.text_input(
-            "Enter a public GitHub repository URL",
-            placeholder="https://github.com/user/repo",
-            key="code_audit_github_url",
-        )
-        if github_url and st.button("🚀 Clone & Analyze", key="code_audit_clone_btn"):
+        # Inline URL + button
+        url_col, btn_col = st.columns([3, 1], vertical_alignment="bottom")
+        with url_col:
+            github_url = st.text_input(
+                "Enter a public GitHub repository URL",
+                placeholder="https://github.com/user/repo",
+                key="code_audit_github_url",
+            )
+        with btn_col:
+            clone_clicked = st.button("🚀 Clone & Analyze", key="code_audit_clone_btn", use_container_width=True)
+
+        if github_url and clone_clicked:
             logger.info("User requested clone & ingest for URL: {}", github_url)
-            with st.spinner("Cloning repository and running gitingest…"):
+            with st.status("Cloning and analyzing repository…", expanded=True) as status:
                 try:
+                    st.write("📥 Cloning repository…")
                     code_content = clone_and_ingest(github_url)
                     st.session_state["code_audit_code_content"] = code_content
                     logger.success("Repository ingested successfully ({} chars)", len(code_content))
-                    st.success("Repository ingested successfully! ✅")
+                    st.write("✅ Repository ingested successfully!")
+                    status.update(label="Repository ready ✅", state="complete", expanded=False)
                 except Exception as e:
                     logger.error("Clone & ingest failed for '{}': {}", github_url, e)
+                    status.update(label="Error ❌", state="error")
                     st.error(f"❌ Error: {e}")
                     return
 
@@ -81,9 +90,11 @@ def render() -> None:
 
     if run or (code_content and "code_audit_response" not in st.session_state and input_method != "📄 Upload a .txt file"):
         logger.info("Running code review with model='{}'", model)
-        with st.spinner("🤖 Analyzing with Groq LLM…"):
+        with st.status("Running AI code review…", expanded=True) as status:
+            st.write("🤖 Sending code to Groq LLM…")
             response = call_groq_llm(api_key, model, prompt, code_content)
             st.session_state["code_audit_response"] = response
+            status.update(label="Review complete ✅", state="complete", expanded=False)
 
     if "code_audit_response" in st.session_state:
         st.markdown("---")
