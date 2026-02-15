@@ -47,6 +47,10 @@ check: lint format-check ## Run all code quality checks (lint + format)
 
 # ─── Build & Package ─────────────────────────────────────────────────────────
 
+.PHONY: bump
+bump: ## Bump version using commitizen (conventional commits)
+	uv run --extra dev cz bump
+
 .PHONY: build
 build: ## Build the distribution package
 	uv build
