@@ -191,6 +191,61 @@ def clone_and_ingest(github_url: str, status_callback=None) -> dict:
         with open(digest_path, "r", encoding="utf-8") as f:
             content = f.read()
 
+        # ----------------------------------------------------------
+        # Supplement: gitingest silently excludes dotfiles (.gitignore,
+        # .env, .python-version, etc.).  We scan the repo root for
+        # common dotfiles and append them to the digest so the LLM
+        # can evaluate their presence/content.
+        # ----------------------------------------------------------
+        _DOTFILES_TO_CHECK = [
+            ".gitignore",
+            ".env",
+            ".env.example",
+            ".python-version",
+            ".flake8",
+            ".editorconfig",
+            ".pre-commit-config.yaml",
+            ".gitattributes",
+            ".dockerignore",
+            ".nvmrc",
+            ".tool-versions",
+        ]
+        separator = "=" * 48
+        dotfile_supplement = ""
+        for dotfile in _DOTFILES_TO_CHECK:
+            dotfile_path = os.path.join(local_path, dotfile)
+            if os.path.isfile(dotfile_path):
+                try:
+                    with open(dotfile_path, "r", encoding="utf-8", errors="replace") as df:
+                        dotfile_content = df.read()
+                    dotfile_supplement += (
+                        f"\n{separator}\nFile: {dotfile}\n{separator}\n{dotfile_content}\n"
+                    )
+                    logger.info("Supplemented digest with dotfile: {}", dotfile)
+                except Exception as exc:
+                    logger.warning("Could not read dotfile '{}': {}", dotfile, exc)
+
+        # Also check for CI/CD config directories
+        github_workflows = os.path.join(local_path, ".github", "workflows")
+        if os.path.isdir(github_workflows):
+            for wf_file in os.listdir(github_workflows):
+                wf_path = os.path.join(github_workflows, wf_file)
+                if os.path.isfile(wf_path):
+                    try:
+                        with open(wf_path, "r", encoding="utf-8", errors="replace") as wf:
+                            wf_content = wf.read()
+                        dotfile_supplement += (
+                            f"\n{separator}\nFile: .github/workflows/{wf_file}\n{separator}\n{wf_content}\n"
+                        )
+                        logger.info("Supplemented digest with workflow: .github/workflows/{}", wf_file)
+                    except Exception as exc:
+                        logger.warning("Could not read workflow file '{}': {}", wf_path, exc)
+
+        if dotfile_supplement:
+            content += dotfile_supplement
+            logger.info("Dotfile supplement added ({} chars)", len(dotfile_supplement))
+
+
         elapsed = round(time.time() - start, 1)
 
         # Compute metadata
@@ -244,53 +299,85 @@ def git_diff(repo_path: str, source_branch: str, target_branch: str) -> str:
 
 
 def parse_gitingest_content(content: str) -> list[dict]:
-    """Parse *content* (output from gitingest) into a list of file dicts."""
-    # Robust regex for the separator (at least 20 equals signs)
-    separator_pattern = r"^={20,}$"
+    """Parse *content* (output from gitingest) into a list of file dicts.
     
-    # Split the content
+    gitingest output format:
+    
+        ================================================================
+        File: src/main.py
+        ================================================================
+        <file content here>
+        
+        ================================================================
+        File: src/utils.py
+        ================================================================
+        <file content here>
+    
+    Each file header is sandwiched between two separator lines (``====…``).
+    When we ``re.split`` by the separator, file headers and their content
+    end up in **alternating** chunks that must be paired together.
+    """
+    separator_pattern = r"^={20,}$"
     raw_chunks = re.split(separator_pattern, content, flags=re.MULTILINE)
     
-    files = []
+    # Strip all chunks once and filter out empty ones, keeping indices
+    stripped = [(i, c.strip()) for i, c in enumerate(raw_chunks) if c.strip()]
     
-    for chunk in raw_chunks:
-        chunk = chunk.strip()
-        if not chunk:
+    files = []
+    skip_next = False
+    
+    for idx, (pos, chunk) in enumerate(stripped):
+        if skip_next:
+            skip_next = False
             continue
-            
+        
         lines = chunk.splitlines()
-        while lines and not lines[0].strip():
-            lines.pop(0)
+        first_line = lines[0].strip() if lines else ""
+        
+        # Detect a "File: <path>" or "FILE: <path>" header chunk (case-insensitive)
+        first_line_lower = first_line.lower()
+        if first_line_lower.startswith("file: "):
+            # Extract path after "file: " (preserving original casing of the path)
+            path = first_line[len("file: "):].strip()
             
-        if not lines:
-            continue
+            # The CONTENT is the NEXT chunk (after the closing separator)
+            if idx + 1 < len(stripped):
+                _, next_chunk = stripped[idx + 1]
+                # Make sure the next chunk is not another "File:" header
+                next_first = next_chunk.splitlines()[0].strip() if next_chunk else ""
+                if not next_first.lower().startswith("file: "):
+                    file_content = next_chunk
+                    skip_next = True
+                else:
+                    # Next chunk is another File header → this file is empty
+                    file_content = ""
+            else:
+                file_content = ""
             
-        if lines[0].startswith("File: "):
-            path = lines[0].replace("File: ", "").strip()
-            file_content = "\n".join(lines[1:]).strip()
             files.append({
                 "path": path,
                 "content": file_content,
-                "tokens": estimate_tokens(file_content)
+                "tokens": estimate_tokens(file_content) if file_content else 0,
             })
-        elif lines[0].startswith("Directory: "):
-             continue
+        elif first_line_lower.startswith("directory:") or "files analyzed:" in chunk.lower():
+            # Preamble / summary — skip
+            logger.debug("Skipping preamble chunk: '{}'", first_line[:60])
+            continue
         else:
-             pass
-             
-    # FALLBACK: If we found no files, it effectively means the parse failed 
-    # (or the repo is empty, but then content would be empty).
-    # We treat the whole content as one "file" to ensure we don't return 0 chunks.
+            # Orphan content chunk (shouldn't happen with correct pairing)
+            logger.debug("Orphan chunk (pos {}): '{}'", pos, first_line[:60])
+
+    # FALLBACK: if parsing found nothing, treat the whole content as one file
     if not files and content.strip():
         logger.warning("parse_gitingest_content found 0 files. Falling back to single-file mode.")
-        logger.debug("Content preview: {}", content[:200])
         files.append({
             "path": "entire_repo_digest.txt",
             "content": content,
-            "tokens": estimate_tokens(content)
+            "tokens": estimate_tokens(content),
         })
 
-    logger.info("Parsed {} files from digest.", len(files))
+    total_tokens = sum(f["tokens"] for f in files)
+    logger.info("Parsed {} files from digest. Total input tokens (est): {}", len(files), total_tokens)
     return files
 
 
@@ -476,10 +563,11 @@ def analyze_code_content(
             
         files = parse_gitingest_content(code_content)
         # Chunk size also needs to be safe for TPM (input tokens)
-        chunks = create_chunks(files, max_tokens=6000) 
+        effective_max = 6000
+        chunks = create_chunks(files, max_tokens=effective_max) 
         
         if status_callback:
-            status_callback(f"Split into {len(chunks)} chunks for analysis.")
+            status_callback(f"Parsed {len(files)} files. Split into {len(chunks)} chunks (max {effective_max} toks).")
             
         return map_reduce_analysis(
             api_key, 
