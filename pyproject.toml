@@ -89,4 +89,4 @@ changelog_message_template = """
 """
 
 [project.urls]
-homepage = https://github.com/malganis35/Dev-Tooling-Chat/
+homepage = "https://github.com/malganis35/Dev-Tooling-Chat/"
