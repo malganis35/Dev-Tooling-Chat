@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project uses [Conventional Commits](https://www.conventionalcommits.org/) with [Commitizen](https://github.com/commitizen/cz-cli).
 
+## v0.5.0 (2026-02-15)
+
+### Feat
+
+- add github ci
+- add map reduce strategy for large codebase
+
+### Fix
+
+- correct version number
+- correct .gitignore file and chunk issue
+
 ## v0.6.0 (2026-02-15)
 
 ### Feat
