@@ -222,9 +222,7 @@ def clone_and_ingest(github_url: str, status_callback: callable | None = None) -
                 try:
                     with open(dotfile_path, encoding="utf-8", errors="replace") as df:
                         dotfile_content = df.read()
-                    dotfile_supplement += (
-                        f"\n{separator}\nFile: {dotfile}\n{separator}\n{dotfile_content}\n"
-                    )
+                    dotfile_supplement += f"\n{separator}\nFile: {dotfile}\n{separator}\n{dotfile_content}\n"
                     logger.info("Supplemented digest with dotfile: {}", dotfile)
                 except Exception as exc:
                     logger.warning("Could not read dotfile '{}': {}", dotfile, exc)
@@ -249,7 +247,6 @@ def clone_and_ingest(github_url: str, status_callback: callable | None = None) -
             content += dotfile_supplement
             logger.info("Dotfile supplement added ({} chars)", len(dotfile_supplement))
 
-
         elapsed = round(time.time() - start, 1)
 
         # Compute metadata
@@ -264,7 +261,10 @@ def clone_and_ingest(github_url: str, status_callback: callable | None = None) -
 
         logger.success(
             "Digest loaded: {} chars, ~{} tokens, ~{} files, {:.1f}s",
-            char_count, token_est, file_count, elapsed,
+            char_count,
+            token_est,
+            file_count,
+            elapsed,
         )
 
         _report(
@@ -299,7 +299,6 @@ def git_diff(repo_path: str, source_branch: str, target_branch: str) -> str:
     diff = repo.git.diff(f"origin/{target_branch}", f"origin/{source_branch}")
     logger.info("Diff computed: {} chars", len(diff))
     return diff
-
 
 
 def parse_gitingest_content(content: str) -> list[dict]:
@@ -342,7 +341,7 @@ def parse_gitingest_content(content: str) -> list[dict]:
         first_line_lower = first_line.lower()
         if first_line_lower.startswith("file: "):
             # Extract path after "file: " (preserving original casing of the path)
-            path = first_line[len("file: "):].strip()
+            path = first_line[len("file: ") :].strip()
 
             # The CONTENT is the NEXT chunk (after the closing separator)
             if idx + 1 < len(stripped):
@@ -358,11 +357,13 @@ def parse_gitingest_content(content: str) -> list[dict]:
             else:
                 file_content = ""
 
-            files.append({
-                "path": path,
-                "content": file_content,
-                "tokens": estimate_tokens(file_content) if file_content else 0,
-            })
+            files.append(
+                {
+                    "path": path,
+                    "content": file_content,
+                    "tokens": estimate_tokens(file_content) if file_content else 0,
+                }
+            )
         elif first_line_lower.startswith("directory:") or "files analyzed:" in chunk.lower():
             # Preamble / summary — skip
             logger.debug("Skipping preamble chunk: '{}'", first_line[:60])
@@ -374,11 +375,13 @@ def parse_gitingest_content(content: str) -> list[dict]:
     # FALLBACK: if parsing found nothing, treat the whole content as one file
     if not files and content.strip():
         logger.warning("parse_gitingest_content found 0 files. Falling back to single-file mode.")
-        files.append({
-            "path": "entire_repo_digest.txt",
-            "content": content,
-            "tokens": estimate_tokens(content),
-        })
+        files.append(
+            {
+                "path": "entire_repo_digest.txt",
+                "content": content,
+                "tokens": estimate_tokens(content),
+            }
+        )
 
     total_tokens = sum(f["tokens"] for f in files)
     logger.info("Parsed {} files from digest. Total input tokens (est): {}", len(files), total_tokens)
@@ -421,8 +424,8 @@ def create_chunks(files: list[dict], max_tokens: int = 6000) -> list[str]:
         # Now, is the file ITSELF larger than max_tokens?
         if f_tokens > max_tokens:
             # We need to split this file
-            logger.info("File '{}' is too large ({} tokens). Splitting...", f['path'], f_tokens)
-            lines = f['content'].splitlines()
+            logger.info("File '{}' is too large ({} tokens). Splitting...", f["path"], f_tokens)
+            lines = f["content"].splitlines()
 
             # Accumulate lines for this file parts
             part_lines = []
@@ -434,7 +437,7 @@ def create_chunks(files: list[dict], max_tokens: int = 6000) -> list[str]:
             header_tokens = estimate_tokens(header)
 
             for line in lines:
-                line_tokens = estimate_tokens(line) + 1 # +1 for newline
+                line_tokens = estimate_tokens(line) + 1  # +1 for newline
 
                 if part_tokens + line_tokens + header_tokens > max_tokens:
                     # Flush this part
@@ -475,7 +478,7 @@ def map_reduce_analysis(
     prompt_template: str,
     chunks: list[str],
     repo_url: str,
-    status_callback: callable | None = None
+    status_callback: callable | None = None,
 ) -> dict:
     """Perform a Map-Reduce analysis on *chunks*."""
 
@@ -538,7 +541,7 @@ def analyze_code_content(
     prompt_template: str,
     code_content: str,
     repo_url: str,
-    status_callback: callable | None = None
+    status_callback: callable | None = None,
 ) -> dict:
     """Intelligent analysis that switches to Map-Reduce if content is too large."""
     # 1. Check size
@@ -554,12 +557,7 @@ def analyze_code_content(
             status_callback(f"Running standard analysis (~{total_tokens} tokens)...")
 
         llm_content = f"GitHub Repository URL: {repo_url}\n\n{code_content}"
-        return call_groq_llm(
-            api_key,
-            model,
-            prompt_template.format(model_name=model, repo_url=repo_url),
-            llm_content
-        )
+        return call_groq_llm(api_key, model, prompt_template.format(model_name=model, repo_url=repo_url), llm_content)
     else:
         # Map-Reduce Strategy
         if status_callback:
@@ -579,7 +577,7 @@ def analyze_code_content(
             prompt_template.format(model_name=model, repo_url=repo_url),
             chunks,
             repo_url,
-            status_callback
+            status_callback,
         )
 
 

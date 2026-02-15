@@ -84,25 +84,24 @@ def render() -> None:
                 st.code(diff_content[:3000] + ("..." if len(diff_content) > 3000 else ""), language="diff")
 
         if diff_content and st.button("🚀 Generate MR Description", key="mr_run_file_btn"):
-                model = st.session_state.get("groq_model", "openai/gpt-oss-120b")
-                logger.info("Generating MR description from uploaded file with model='{}'", model)
-                with st.status("Generating MR description…", expanded=True) as status:
-                    st.write(f"🤖 Sending diff to **{model}** (~{estimate_tokens(diff_content):,} tokens)…")
-                    result = call_groq_llm(api_key, model, prompt, diff_content)
-                    st.session_state["mr_response"] = result["content"]
-                    usage = result["usage"]
-                    st.write(
-                        f"✅ Generated in **{result['elapsed_seconds']}s** — "
-                        f"{usage['prompt_tokens']:,} prompt + {usage['completion_tokens']:,} completion tokens"
-                    )
-                    status.update(
-                        label=(
-                            f"Description ready ✅ — {result['elapsed_seconds']}s · "
-                            f"{usage['total_tokens']:,} tokens used"
-                        ),
-                        state="complete",
-                        expanded=False,
-                    )
+            model = st.session_state.get("groq_model", "openai/gpt-oss-120b")
+            logger.info("Generating MR description from uploaded file with model='{}'", model)
+            with st.status("Generating MR description…", expanded=True) as status:
+                st.write(f"🤖 Sending diff to **{model}** (~{estimate_tokens(diff_content):,} tokens)…")
+                result = call_groq_llm(api_key, model, prompt, diff_content)
+                st.session_state["mr_response"] = result["content"]
+                usage = result["usage"]
+                st.write(
+                    f"✅ Generated in **{result['elapsed_seconds']}s** — "
+                    f"{usage['prompt_tokens']:,} prompt + {usage['completion_tokens']:,} completion tokens"
+                )
+                status.update(
+                    label=(
+                        f"Description ready ✅ — {result['elapsed_seconds']}s · {usage['total_tokens']:,} tokens used"
+                    ),
+                    state="complete",
+                    expanded=False,
+                )
 
     else:
         # Inline URL + button
@@ -139,7 +138,9 @@ def render() -> None:
                     st.session_state["mr_branches"] = branches
                     st.session_state["mr_last_url"] = github_url
                     logger.success("Found {} branches", len(branches))
-                    st.write(f"✅ Found **{len(branches)} branches**: {', '.join(branches[:10])}{'...' if len(branches) > 10 else ''}")
+                    st.write(
+                        f"✅ Found **{len(branches)} branches**: {', '.join(branches[:10])}{'...' if len(branches) > 10 else ''}"
+                    )
                     status.update(
                         label=f"{len(branches)} branches found ✅ — {repo_name}",
                         state="complete",
@@ -184,9 +185,7 @@ def render() -> None:
 
                         diff_lines = diff_text.count("\n")
                         diff_tokens = estimate_tokens(diff_text)
-                        st.write(
-                            f"✅ Diff computed — **{diff_lines:,} lines** · ~{diff_tokens:,} tokens"
-                        )
+                        st.write(f"✅ Diff computed — **{diff_lines:,} lines** · ~{diff_tokens:,} tokens")
 
                         with st.expander("📄 Preview diff", expanded=False):
                             st.code(diff_text[:3000] + ("..." if len(diff_text) > 3000 else ""), language="diff")

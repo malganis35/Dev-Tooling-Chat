@@ -145,13 +145,13 @@ def render() -> None:
 
             # Use the smart analysis function
             result = analyze_code_content(
-                    api_key=api_key,
-                    model=model,
-                    prompt_template=prompt,
-                    code_content=code_content,
-                    repo_url=repo_url,
-                    status_callback=st.write
-                )
+                api_key=api_key,
+                model=model,
+                prompt_template=prompt,
+                code_content=code_content,
+                repo_url=repo_url,
+                status_callback=st.write,
+            )
 
             st.session_state["code_audit_response"] = result["content"]
             usage = result["usage"]
@@ -160,10 +160,7 @@ def render() -> None:
                 f"{usage['prompt_tokens']:,} prompt + {usage['completion_tokens']:,} completion tokens"
             )
             status.update(
-                label=(
-                    f"Review complete ✅ — {result['elapsed_seconds']}s · "
-                    f"{usage['total_tokens']:,} tokens used"
-                ),
+                label=(f"Review complete ✅ — {result['elapsed_seconds']}s · {usage['total_tokens']:,} tokens used"),
                 state="complete",
                 expanded=False,
             )

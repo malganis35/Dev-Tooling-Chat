@@ -151,7 +151,7 @@ def render() -> None:
                 prompt_template=prompt,
                 code_content=code_content,
                 repo_url=repo_url,
-                status_callback=st.write
+                status_callback=st.write,
             )
 
             st.session_state["audit_response"] = result["content"]
@@ -161,10 +161,7 @@ def render() -> None:
                 f"{usage['prompt_tokens']:,} prompt + {usage['completion_tokens']:,} completion tokens"
             )
             status.update(
-                label=(
-                    f"Audit complete ✅ — {result['elapsed_seconds']}s · "
-                    f"{usage['total_tokens']:,} tokens used"
-                ),
+                label=(f"Audit complete ✅ — {result['elapsed_seconds']}s · {usage['total_tokens']:,} tokens used"),
                 state="complete",
                 expanded=False,
             )

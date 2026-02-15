@@ -76,7 +76,7 @@ with st.sidebar:
     st.markdown(
         '<a href="https://console.groq.com/keys" target="_blank" '
         'style="font-size:0.8rem; color:#667eea; text-decoration:none;">'
-        '🔗 Do not have a Groq API key? Get one here →</a>',
+        "🔗 Do not have a Groq API key? Get one here →</a>",
         unsafe_allow_html=True,
     )
 
